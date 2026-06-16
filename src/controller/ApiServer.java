@@ -60,6 +60,8 @@ public class ApiServer {
         server.createContext("/api/items", this::handleItems);
         server.createContext("/api/knapsack", this::handleKnapsack);
         server.createContext("/api/field-report", this::handleFieldReport);
+        server.createContext("/api/add-node", this::handleAddNode);
+        server.createContext("/api/add-edge", this::handleAddEdge);
         server.createContext("/", this::handleStatic);
     }
 
@@ -289,17 +291,78 @@ public class ApiServer {
         String body = new String(ex.getRequestBody().readAllBytes(), StandardCharsets.UTF_8);
         Map<String, String> form = parseFormBody(body);
 
-        String nodeId = emptyToNull(form.get("nodeTarget"));
-        Double floodDepth = parseDoubleOrNull(form.get("floodDepth"));
-        Double baseWeight = parseDoubleOrNull(form.get("baseWeight"));
-        String itemId = emptyToNull(form.get("itemCategory"));
-        Double itemWeight = parseDoubleOrNull(form.get("itemWeight"));
-        Double itemPriority = parseDoubleOrNull(form.get("priorityValue"));
+        String nodeId      = emptyToNull(form.get("nodeTarget"));
+        Double floodDepth  = parseDoubleOrNull(form.get("floodDepth"));
+        Double baseWeight  = parseDoubleOrNull(form.get("baseWeight"));
+        String itemId      = emptyToNull(form.get("itemCategory"));
+        Double itemWeight  = parseDoubleOrNull(form.get("itemWeight"));
+        Double itemPriority= parseDoubleOrNull(form.get("priorityValue"));
 
-        boolean changed = controller.submitFieldReport(nodeId, floodDepth, baseWeight, itemId, itemWeight, itemPriority);
+        // direct edge update (from edges editor tab)
+        String edgeFrom    = emptyToNull(form.get("edgeFrom"));
+        String edgeTo      = emptyToNull(form.get("edgeTo"));
+        Double edgeWeight  = parseDoubleOrNull(form.get("edgeWeight"));
+
+        boolean changed = controller.submitFieldReport(
+                nodeId, floodDepth, baseWeight,
+                itemId, itemWeight, itemPriority,
+                edgeFrom, edgeTo, edgeWeight);
 
         String json = "{\"status\":" + q(changed ? "ok" : "no-change") + "}";
         send(ex, 200, "application/json; charset=utf-8", json);
+    }
+
+    /* =========================================================
+       POST /api/add-node
+       ========================================================= */
+
+    private void handleAddNode(HttpExchange ex) throws IOException {
+        if (!"POST".equalsIgnoreCase(ex.getRequestMethod())) {
+            ex.sendResponseHeaders(405, -1);
+            return;
+        }
+        String body = new String(ex.getRequestBody().readAllBytes(), StandardCharsets.UTF_8);
+        Map<String, String> form = parseFormBody(body);
+
+        String nodeId   = emptyToNull(form.get("nodeId"));
+        String nodeName = emptyToNull(form.get("nodeName"));
+        String priority = form.getOrDefault("priority", "MODERATE");
+        double depth    = parseDoubleOr(form.get("floodDepth"), 300);
+
+        if (nodeId == null || nodeName == null) {
+            send(ex, 400, "application/json; charset=utf-8", "{\"error\":\"nodeId and nodeName required\"}");
+            return;
+        }
+
+        boolean ok = controller.addNode(nodeId, nodeName, priority, depth);
+        send(ex, 200, "application/json; charset=utf-8",
+                "{\"status\":" + q(ok ? "ok" : "already-exists") + "}");
+    }
+
+    /* =========================================================
+       POST /api/add-edge
+       ========================================================= */
+
+    private void handleAddEdge(HttpExchange ex) throws IOException {
+        if (!"POST".equalsIgnoreCase(ex.getRequestMethod())) {
+            ex.sendResponseHeaders(405, -1);
+            return;
+        }
+        String body = new String(ex.getRequestBody().readAllBytes(), StandardCharsets.UTF_8);
+        Map<String, String> form = parseFormBody(body);
+
+        String from   = emptyToNull(form.get("edgeFrom"));
+        String to     = emptyToNull(form.get("edgeTo"));
+        double weight = parseDoubleOr(form.get("edgeWeight"), 10);
+
+        if (from == null || to == null) {
+            send(ex, 400, "application/json; charset=utf-8", "{\"error\":\"edgeFrom and edgeTo required\"}");
+            return;
+        }
+
+        boolean ok = controller.addEdge(from, to, weight);
+        send(ex, 200, "application/json; charset=utf-8",
+                "{\"status\":" + q(ok ? "ok" : "invalid-nodes") + "}");
     }
 
     /* =========================================================

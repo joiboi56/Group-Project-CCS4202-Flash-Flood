@@ -5,6 +5,7 @@ import algorithm.FractionalKnapsackOptimizer;
 import database.FloodDatabase;
 import model.Graph;
 import model.KnapsackResult;
+import model.PriorityLevel;
 import model.RouteResult;
 import model.SupplyItem;
 import model.VehicleProfile;
@@ -12,13 +13,9 @@ import model.VehicleProfile;
 import java.util.List;
 
 /**
- * CONTROLLER layer of the MVC architecture (see "Sketch / Framework"):
- *   - Handles request flow
- *   - Acts as intermediary between Model (FloodDatabase) and View (the
- *     rescue-console / give-info-console HTML pages, via {@link ApiServer})
- *   - Calls the appropriate algorithm models (Dijkstra & Fractional Knapsack)
- *   - Never handles raw data-storage logic directly -- that is delegated
- *     to {@link FloodDatabase}.
+ * CONTROLLER layer of the MVC architecture.
+ * Calls Dijkstra and Fractional Knapsack, delegates all
+ * data mutations to FloodDatabase.
  */
 public class FloodController {
 
@@ -30,56 +27,60 @@ public class FloodController {
         this.database = database;
     }
 
-    /** Module 01: Route Minimization Engine (Dijkstra). */
     public RouteResult getRouteAnalysis(String sourceId, double dMax) {
         return router.computeShortestPaths(database.getGraph(), sourceId, dMax);
     }
 
-    /** Module 02: Load Score Maximization Engine (Fractional Knapsack). */
     public KnapsackResult getLoadOptimization(double capacityW) {
         return knapsackOptimizer.optimize(database.getSupplyItems(), capacityW);
     }
 
-    public Graph getGraph() {
-        return database.getGraph();
-    }
-
-    public List<SupplyItem> getSupplyItems() {
-        return database.getSupplyItems();
-    }
-
-    public List<VehicleProfile> getVehicleProfiles() {
-        return database.getVehicleProfiles();
-    }
+    public Graph getGraph() { return database.getGraph(); }
+    public List<SupplyItem> getSupplyItems() { return database.getSupplyItems(); }
+    public List<VehicleProfile> getVehicleProfiles() { return database.getVehicleProfiles(); }
 
     /**
-     * Handles a field report submitted via the "I want to give information" form.
-     *
-     * @param nodeId       target crisis node v in V (nullable)
-     * @param floodDepth   new d(n) value in mm (nullable)
-     * @param baseWeight   new baseline w(u,v) for the node's primary hub edge (nullable)
-     * @param itemId       supply item i in I (nullable)
-     * @param itemWeight   new w(i) for that item (nullable)
-     * @param itemPriority new v(i) for that item (nullable)
-     * @return true if at least one field was updated
+     * Handles field reports: node flood depth, hub edge weight,
+     * supply item changes, or a direct edge update by from/to pair.
      */
     public boolean submitFieldReport(String nodeId, Double floodDepth, Double baseWeight,
-                                      String itemId, Double itemWeight, Double itemPriority) {
+                                     String itemId, Double itemWeight, Double itemPriority,
+                                     String edgeFrom, String edgeTo, Double edgeWeight) {
         boolean changed = false;
 
-        if (nodeId != null && floodDepth != null) {
+        if (nodeId != null && floodDepth != null)
             changed |= database.updateNodeFloodDepth(nodeId, floodDepth);
-        }
-        if (nodeId != null && baseWeight != null) {
-            changed |= database.updateEdgeBaseWeight(nodeId, baseWeight);
-        }
-        if (itemId != null && (itemWeight != null || itemPriority != null)) {
-            changed |= database.updateSupplyItem(itemId, itemWeight, itemPriority);
-        }
 
-        if (changed) {
-            database.save();
-        }
+        if (nodeId != null && baseWeight != null)
+            changed |= database.updateEdgeBaseWeight(nodeId, baseWeight);
+
+        if (itemId != null && (itemWeight != null || itemPriority != null))
+            changed |= database.updateSupplyItem(itemId, itemWeight, itemPriority);
+
+        if (edgeFrom != null && edgeTo != null && edgeWeight != null)
+            changed |= database.updateEdgeDirect(edgeFrom, edgeTo, edgeWeight);
+
+        if (changed) database.save();
         return changed;
+    }
+
+    /** Add a brand-new node to V at runtime. Returns false if the id already exists. */
+    public boolean addNode(String id, String name, String priority, double floodDepth) {
+        if (database.getGraph().getNode(id) != null) return false;
+        PriorityLevel pl;
+        try { pl = PriorityLevel.valueOf(priority.toUpperCase()); }
+        catch (IllegalArgumentException e) { pl = PriorityLevel.MODERATE; }
+        database.addNode(id, name, pl, floodDepth);
+        database.save();
+        return true;
+    }
+
+    /** Add a directed edge u→v to E at runtime. Returns false if either node doesn't exist. */
+    public boolean addEdge(String from, String to, double weight) {
+        if (database.getGraph().getNode(from) == null) return false;
+        if (database.getGraph().getNode(to)   == null) return false;
+        database.addEdge(from, to, weight);
+        database.save();
+        return true;
     }
 }

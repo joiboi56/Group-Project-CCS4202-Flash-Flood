@@ -173,6 +173,24 @@ public class FloodDatabase {
         return true;
     }
 
+    /** Directly update the baseline weight of any edge by its from/to pair. */
+    public boolean updateEdgeDirect(String from, String to, double weight) {
+        Edge e = graph.findEdge(from, to);
+        if (e == null) return false;
+        e.setBaseWeight(weight);
+        return true;
+    }
+
+    /** Add a brand-new node to V at runtime. */
+    public void addNode(String id, String name, PriorityLevel priority, double floodDepth) {
+        graph.addNode(new Node(id, name, priority, floodDepth));
+    }
+
+    /** Add a directed edge to E at runtime. */
+    public void addEdge(String from, String to, double weight) {
+        graph.addEdge(new Edge(from, to, weight));
+    }
+
     /* =======================================================
        Simple file-based persistence (read/write data)
        ======================================================= */
@@ -181,7 +199,10 @@ public class FloodDatabase {
     public synchronized void save() {
         try (PrintWriter pw = new PrintWriter(new FileWriter(DATA_FILE))) {
             for (Node n : graph.getAllNodes()) {
-                pw.printf("NODE,%s,%.2f%n", n.getId(), n.getFloodDepthMm());
+                pw.printf("NODE,%s,%s,%.2f%n",
+                        n.getId(),
+                        n.getPriority().name(),
+                        n.getFloodDepthMm());
             }
             for (Edge e : graph.getEdges()) {
                 pw.printf("EDGE,%s,%s,%.2f%n", e.getFrom(), e.getTo(), e.getBaseWeight());
@@ -209,9 +230,26 @@ public class FloodDatabase {
                 String[] parts = line.split(",");
                 switch (parts[0]) {
                     case "NODE": {
-                        Node n = graph.getNode(parts[1]);
-                        if (n != null) {
-                            n.setFloodDepthMm(Double.parseDouble(parts[2]));
+                        if (parts.length == 3) {
+                            // old format: NODE,id,floodDepth
+                            Node n = graph.getNode(parts[1]);
+                            if (n != null) {
+                                n.setFloodDepthMm(Double.parseDouble(parts[2]));
+                            }
+                        } else if (parts.length >= 4) {
+                            // new format: NODE,id,PRIORITY,floodDepth
+                            // if node already exists just update depth;
+                            // if it doesn't (user added at runtime), create it
+                            Node existing = graph.getNode(parts[1]);
+                            double depth = Double.parseDouble(parts[3]);
+                            if (existing != null) {
+                                existing.setFloodDepthMm(depth);
+                            } else {
+                                PriorityLevel pl;
+                                try { pl = PriorityLevel.valueOf(parts[2]); }
+                                catch (IllegalArgumentException e) { pl = PriorityLevel.MODERATE; }
+                                graph.addNode(new Node(parts[1], parts[1], pl, depth));
+                            }
                         }
                         break;
                     }
@@ -219,6 +257,11 @@ public class FloodDatabase {
                         Edge e = graph.findEdge(parts[1], parts[2]);
                         if (e != null) {
                             e.setBaseWeight(Double.parseDouble(parts[3]));
+                        } else {
+                            // edge was added at runtime — restore it
+                            if (graph.getNode(parts[1]) != null && graph.getNode(parts[2]) != null) {
+                                graph.addEdge(new Edge(parts[1], parts[2], Double.parseDouble(parts[3])));
+                            }
                         }
                         break;
                     }
