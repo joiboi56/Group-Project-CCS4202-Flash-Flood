@@ -139,11 +139,43 @@
 
     <!-- stat cards -->
     <div class="stats">
-        <div class="card"><label>Displaced Households</label><div class="val">4,200</div><div class="sub">12 emergency centres</div></div>
-        <div class="card"><label>Rainfall, 6 Hours</label><div class="val">180 <span class="unit">mm</span></div><div class="sub">Monsoon trough</div></div>
-        <div class="card rv"><label>Roads Impassable</label><div class="val">14</div><div class="sub">Closed link corridors</div></div>
-        <div class="card bu"><label>Decisive Window</label><div class="val">72 <span class="unit">h</span></div><div class="sub">OCHA survival curve</div></div>
+        <!-- Card 1: Displaced Households — click to edit -->
+        <div class="card" title="Click value to edit">
+            <label>Displaced Households</label>
+            <div class="val" id="stat-households" contenteditable="true" spellcheck="false"
+                 style="outline:none;border-bottom:1px dashed var(--border);cursor:text;"
+                 onblur="saveStatCard('households',this.textContent)">4,200</div>
+            <div class="sub" id="stat-centres" contenteditable="true" spellcheck="false"
+                 style="outline:none;cursor:text;"
+                 onblur="saveStatCard('centres',this.textContent)">12 emergency centres</div>
+        </div>
+
+        <!-- Card 2: Rainfall — real-time Open-Meteo API (Serdang lat/lng) -->
+        <div class="card">
+            <label>Rainfall, 6 Hours &nbsp;<span id="rain-status" style="font-size:.68rem;color:var(--muted);text-transform:none;">fetching…</span></label>
+            <div class="val" id="stat-rainfall">— <span class="unit">mm</span></div>
+            <div class="sub" id="stat-rain-sub">Serdang / Putrajaya</div>
+        </div>
+
+        <!-- Card 3: Roads Impassable — click to edit -->
+        <div class="card rv" title="Click value to edit">
+            <label>Roads Impassable</label>
+            <div class="val" id="stat-roads" contenteditable="true" spellcheck="false"
+                 style="outline:none;border-bottom:1px dashed var(--border);cursor:text;color:var(--red);"
+                 onblur="saveStatCard('roads',this.textContent)">14</div>
+            <div class="sub">Closed link corridors</div>
+        </div>
+
+        <!-- Card 4: Decisive Window — click to edit -->
+        <div class="card bu" title="Click value to edit">
+            <label>Decisive Window</label>
+            <div class="val" id="stat-window" contenteditable="true" spellcheck="false"
+                 style="outline:none;border-bottom:1px dashed var(--border);cursor:text;"
+                 onblur="saveStatCard('window',this.textContent)">72</div>
+            <div class="sub">OCHA survival curve <span class="unit">h</span></div>
+        </div>
     </div>
+
 
     <!-- ══════════════════════════════════════════
          MODULE 01 · DIJKSTRA
@@ -934,12 +966,102 @@
        BOOT
     ================================================================ */
     window.addEventListener('DOMContentLoaded', async () => {
+        loadStatCards();       // restore manually-edited values from localStorage
+        fetchRainfall();       // pull live 6-hour rainfall from Open-Meteo
+        setInterval(fetchRainfall, 10 * 60 * 1000); // refresh every 10 min
         await loadGraphData();
         await runDijkstra();
         await runKnapsack();
-        /* re-draw graph on window resize */
         window.addEventListener('resize', () => drawGraph());
     });
+
+    /* ================================================================
+       REAL-TIME RAINFALL — Open-Meteo (no API key needed)
+       Coordinates: Serdang / Putrajaya area
+       lat=2.9667, lng=101.7000
+       Fetches hourly precipitation for the last 6 hours and sums it.
+    ================================================================ */
+    async function fetchRainfall() {
+        const statusEl  = document.getElementById('rain-status');
+        const rainfallEl = document.getElementById('stat-rainfall');
+        const subEl     = document.getElementById('stat-rain-sub');
+
+        statusEl.textContent = 'updating…';
+        statusEl.style.color = 'var(--muted)';
+
+        try {
+            /* Build a 1-day window so we always have the last 6 hours */
+            const now   = new Date();
+            const start = new Date(now); start.setDate(start.getDate() - 1);
+            const fmt   = d => d.toISOString().slice(0,10);
+
+            const url = `https://api.open-meteo.com/v1/forecast` +
+                `?latitude=2.9667&longitude=101.7000` +
+                `&hourly=precipitation` +
+                `&timezone=Asia%2FKuala_Lumpur` +
+                `&start_date=${fmt(start)}&end_date=${fmt(now)}`;
+
+            const res  = await fetch(url);
+            const data = await res.json();
+
+            const times  = data.hourly.time;          // ["2026-06-16T00:00", ...]
+            const precip = data.hourly.precipitation; // mm per hour
+
+            /* Find the index of the most recent completed hour */
+            const nowStr = now.toISOString().slice(0,13); // "2026-06-16T11"
+            let latestIdx = -1;
+            times.forEach((t, i) => {
+                if (t <= nowStr) latestIdx = i;
+            });
+
+            if (latestIdx < 0) throw new Error('no data');
+
+            /* Sum last 6 hours */
+            const startIdx  = Math.max(0, latestIdx - 5);
+            const sixHrSum  = precip.slice(startIdx, latestIdx + 1)
+                .reduce((a, b) => a + (b || 0), 0);
+            const rounded   = Math.round(sixHrSum * 10) / 10;
+
+            /* Pick a colour: green=dry, yellow=moderate, red=heavy */
+            let colour = 'var(--green)';
+            let label  = 'Light / dry conditions';
+            if (rounded >= 50)  { colour = 'var(--red)';    label = 'Heavy — flood risk HIGH'; }
+            else if (rounded >= 10) { colour = 'var(--yellow)'; label = 'Moderate rainfall'; }
+
+            rainfallEl.innerHTML = `<span style="color:${colour}">${rounded}</span> <span class="unit">mm</span>`;
+            subEl.textContent    = label;
+            statusEl.textContent = '● live';
+            statusEl.style.color = 'var(--green)';
+
+            /* If rainfall is heavy, flash the card border red */
+            const rainCard = rainfallEl.closest('.card');
+            rainCard.style.borderColor = rounded >= 50 ? 'var(--red)' : 'var(--border)';
+
+        } catch (err) {
+            rainfallEl.innerHTML = `180 <span class="unit">mm</span>`;
+            subEl.textContent    = 'Monsoon trough (API unavailable)';
+            statusEl.textContent = '● offline';
+            statusEl.style.color = 'var(--red)';
+        }
+    }
+
+    /* ================================================================
+       STAT CARD — manual edit persistence via localStorage
+    ================================================================ */
+    const STAT_KEYS = ['households','centres','roads','window'];
+
+    function saveStatCard(key, value) {
+        const clean = value.trim();
+        if (clean) localStorage.setItem('firstcall_stat_'+key, clean);
+    }
+
+    function loadStatCards() {
+        STAT_KEYS.forEach(key => {
+            const saved = localStorage.getItem('firstcall_stat_'+key);
+            const el    = document.getElementById('stat-'+key);
+            if (saved && el) el.textContent = saved;
+        });
+    }
 </script>
 </body>
 </html>
