@@ -1,39 +1,22 @@
 package model;
 
 /**
- * Represents a directed edge (u, v) &isin; E with weight w(u, v).
- *
- * Per the Problem Specification:
- *   "w(u, v): The weight of the edge connecting node u to node v,
- *    dynamically calculated based on baseline travel time adjusted
- *    for real-time traffic and flood depth."
- *
- * effectiveWeight() implements that dynamic recalculation:
- *      w(u,v) = baseWeight * trafficFactor + floodPenalty
- *
- * trafficFactor and floodPenalty default to neutral values (1.0 and 0.0)
- * so that, out of the box, w(u,v) == baseWeight (matching the example
- * ETAs shown in the project sketch). Field reports submitted through the
- * "I want to give information" console can adjust baseWeight at runtime.
+ * Directed road link (u, v) with travel time w(u,v) in minutes.
  */
 public class Edge {
 
     private final String from;
     private final String to;
-    private double baseWeight;     // baseline travel time, minutes
-    private double trafficFactor;  // multiplicative real-time traffic adjustment
-    private double floodPenalty;   // additive flood-depth adjustment, minutes
+    private double travelMinutes;
+    private double weightLimitKg;
+    private boolean flooded;
 
-    public Edge(String from, String to, double baseWeight) {
-        this(from, to, baseWeight, 1.0, 0.0);
-    }
-
-    public Edge(String from, String to, double baseWeight, double trafficFactor, double floodPenalty) {
+    public Edge(String from, String to, double travelMinutes, double weightLimitKg, boolean flooded) {
         this.from = from;
         this.to = to;
-        this.baseWeight = baseWeight;
-        this.trafficFactor = trafficFactor;
-        this.floodPenalty = floodPenalty;
+        this.travelMinutes = travelMinutes;
+        this.weightLimitKg = weightLimitKg;
+        this.flooded = flooded;
     }
 
     public String getFrom() {
@@ -44,34 +27,31 @@ public class Edge {
         return to;
     }
 
-    public double getBaseWeight() {
-        return baseWeight;
+    public double getTravelMinutes() {
+        return travelMinutes;
     }
 
-    public void setBaseWeight(double baseWeight) {
-        this.baseWeight = baseWeight;
+    public void setTravelMinutes(double travelMinutes) {
+        this.travelMinutes = travelMinutes;
     }
 
-    public double getTrafficFactor() {
-        return trafficFactor;
+    public double getWeightLimitKg() {
+        return weightLimitKg;
     }
 
-    public void setTrafficFactor(double trafficFactor) {
-        this.trafficFactor = trafficFactor;
+    public void setWeightLimitKg(double weightLimitKg) {
+        this.weightLimitKg = weightLimitKg;
     }
 
-    public double getFloodPenalty() {
-        return floodPenalty;
+    public boolean isFlooded() {
+        return flooded;
     }
 
-    public void setFloodPenalty(double floodPenalty) {
-        this.floodPenalty = floodPenalty;
+    public void setFlooded(boolean flooded) {
+        this.flooded = flooded;
     }
 
-    /**
-     * w(u, v): dynamically calculated edge weight used by Dijkstra's algorithm.
-     */
     public double effectiveWeight() {
-        return baseWeight * trafficFactor + floodPenalty;
+        return travelMinutes;
     }
 }

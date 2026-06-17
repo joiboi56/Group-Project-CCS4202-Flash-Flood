@@ -1,26 +1,23 @@
 package model;
 
 /**
- * A single critical resource item i &isin; I, e.g. "Insulin & medical kits".
- *
- * w(i) = weightKg      -> explicit weight of the item
- * v(i) = priorityValue -> priority / survival score of the item
- *
- * density(i) = v(i) / w(i) is the value-to-weight ratio used to sort
- * items for the Fractional Knapsack Algorithm.
+ * Relief supply item for the fractional knapsack module.
+ * weightPerUnit = w(i), priorityScore = v(i), availableKg = stock on hand.
  */
 public class SupplyItem {
 
-    private final String id;     // short key, e.g. "medical", "rations"
-    private final String name;   // display name, e.g. "Insulin & medical kits"
-    private double weightKg;      // w(i)
-    private double priorityValue; // v(i)
+    private final String id;
+    private String name;
+    private double weightPerUnit;
+    private double priorityScore;
+    private double availableKg;
 
-    public SupplyItem(String id, String name, double weightKg, double priorityValue) {
+    public SupplyItem(String id, String name, double weightPerUnit, double priorityScore, double availableKg) {
         this.id = id;
         this.name = name;
-        this.weightKg = weightKg;
-        this.priorityValue = priorityValue;
+        this.weightPerUnit = weightPerUnit;
+        this.priorityScore = priorityScore;
+        this.availableKg = availableKg;
     }
 
     public String getId() {
@@ -31,24 +28,35 @@ public class SupplyItem {
         return name;
     }
 
-    public double getWeightKg() {
-        return weightKg;
+    public void setName(String name) {
+        this.name = name;
     }
 
-    public void setWeightKg(double weightKg) {
-        this.weightKg = weightKg;
+    public double getWeightPerUnit() {
+        return weightPerUnit;
     }
 
-    public double getPriorityValue() {
-        return priorityValue;
+    public void setWeightPerUnit(double weightPerUnit) {
+        this.weightPerUnit = weightPerUnit;
     }
 
-    public void setPriorityValue(double priorityValue) {
-        this.priorityValue = priorityValue;
+    public double getPriorityScore() {
+        return priorityScore;
     }
 
-    /** density(i) = v(i) / w(i) -- value-to-weight ratio. */
+    public void setPriorityScore(double priorityScore) {
+        this.priorityScore = priorityScore;
+    }
+
+    public double getAvailableKg() {
+        return availableKg;
+    }
+
+    public void setAvailableKg(double availableKg) {
+        this.availableKg = availableKg;
+    }
+
     public double density() {
-        return weightKg <= 0 ? 0 : priorityValue / weightKg;
+        return weightPerUnit <= 0 ? 0 : priorityScore / weightPerUnit;
     }
 }

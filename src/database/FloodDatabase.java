@@ -3,9 +3,8 @@ package database;
 import model.Edge;
 import model.Graph;
 import model.Node;
-import model.PriorityLevel;
+import model.PlaceType;
 import model.SupplyItem;
-import model.VehicleProfile;
 
 import java.io.BufferedReader;
 import java.io.File;
@@ -14,22 +13,10 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 
 /**
- * DATABASE layer of the MVC architecture (see "Sketch / Framework"):
- *   - Road network data (the Graph: V, E, w(u,v), d(n))
- *   - Flood status (d(n) per node)
- *   - Relief items & priority (the supply item set I: w(i), v(i))
- *   - Vehicle capacity presets (W, Dmax)
- *   - Read / write data: {@link #save()} and {@link #load()}
- *
- * On startup the database is seeded with the exact scenario values from
- * the Project Initial Plan (NADMA Sector 4 flash flood scenario), then
- * any previously-saved field reports are layered on top from
- * flood_data.txt so changes survive a restart.
+ * Stores the road network, flood readings and relief supplies.
  */
 public class FloodDatabase {
 
@@ -37,76 +24,12 @@ public class FloodDatabase {
 
     private final Graph graph = new Graph();
     private final List<SupplyItem> supplyItems = new ArrayList<>();
-    private final List<VehicleProfile> vehicleProfiles = new ArrayList<>();
-
-    /**
-     * Maps a crisis node id to the (from -> to) hub edge whose baseline
-     * travel cost w(u,v) is updated when a field report is filed for
-     * that node. This mirrors the "Baseline Travel Cost w(u,v)" field
-     * on the "I want to give information" form, which is keyed only by
-     * the target crisis node.
-     */
-    private static final Map<String, String[]> PRIMARY_EDGE = new HashMap<>();
-    static {
-        PRIMARY_EDGE.put("SKS", new String[]{"UPM", "SKS"});
-        PRIMARY_EDGE.put("SMK", new String[]{"UPM", "SMK"});
-        PRIMARY_EDGE.put("U360", new String[]{"UPM", "U360"});
-        PRIMARY_EDGE.put("KTMB", new String[]{"UPM", "KTMB"});
-        PRIMARY_EDGE.put("SGR", new String[]{"UNI", "SGR"});
-        PRIMARY_EDGE.put("MRB", new String[]{"UNI", "MRB"});
-    }
+    private double truckCapacityKg = 500;
+    private double dMaxMm = 400;
 
     public FloodDatabase() {
-        seedDefaults();
+        loadSelangorSample();
         load();
-    }
-
-    /** Seed V, E, I and vehicle profiles with the values from the project sketch. */
-    private void seedDefaults() {
-
-        // ---- V: command hubs and affected target zones ----
-        graph.addNode(new Node("UPM", "UPM Main Base", PriorityLevel.NONE, 100));
-        graph.addNode(new Node("UNI", "UNITEN Sub-base", PriorityLevel.NONE, 100));
-        graph.addNode(new Node("SKS", "SK Sri Serdang", PriorityLevel.CRITICAL, 450));
-        graph.addNode(new Node("SMK", "SMK Sri Serdang", PriorityLevel.HIGH, 400));
-        graph.addNode(new Node("U360", "Univ 360", PriorityLevel.MODERATE, 300));
-        graph.addNode(new Node("KTMB", "KTMB Serdang Station", PriorityLevel.HIGH, 420));
-        graph.addNode(new Node("SGR", "SMK Sungai Ramal", PriorityLevel.CRITICAL, 480));
-        graph.addNode(new Node("MRB", "SK Sg Merab", PriorityLevel.HIGH, 350));
-
-        // ---- E: directed weighted road links, w(u,v) in minutes ----
-        // Hub <-> hub link
-        graph.addEdge(new Edge("UNI", "UPM", 7));
-        graph.addEdge(new Edge("UPM", "UNI", 7));
-
-        // UPM (western/central corridor) -> crisis nodes
-        graph.addEdge(new Edge("UPM", "SKS", 16));   // UNI->UPM->SKS = 23
-        graph.addEdge(new Edge("UPM", "SMK", 14));   // UNI->UPM->SMK = 21
-        graph.addEdge(new Edge("UPM", "U360", 12));  // UNI->UPM->U360 = 19
-        graph.addEdge(new Edge("UPM", "KTMB", 17));  // UNI->UPM->KTMB = 24
-
-        // UNI (eastern corridor) -> crisis nodes
-        graph.addEdge(new Edge("UNI", "SGR", 8));    // UNI->SGR = 8
-        graph.addEdge(new Edge("UNI", "MRB", 11));   // UNI->MRB = 11
-
-        // Cross-links between crisis nodes (creates a richer, more realistic graph)
-        graph.addEdge(new Edge("SKS", "SMK", 3));
-        graph.addEdge(new Edge("SMK", "U360", 4));
-        graph.addEdge(new Edge("U360", "KTMB", 6));
-        graph.addEdge(new Edge("SGR", "MRB", 6));
-        graph.addEdge(new Edge("KTMB", "MRB", 9));
-        graph.addEdge(new Edge("SGR", "KTMB", 20));
-
-        // ---- I: critical resource item set, w(i) in kg, v(i) = priority/survival score ----
-        supplyItems.add(new SupplyItem("medical", "Insulin & medical kits", 30.0, 600.0));
-        supplyItems.add(new SupplyItem("formula", "Infant formula & diapers", 144.0, 1080.0));
-        supplyItems.add(new SupplyItem("hygiene", "Hygiene kits", 80.0, 600.0));
-        supplyItems.add(new SupplyItem("rations", "Food rations (MRE)", 450.0, 2100.0));
-        supplyItems.add(new SupplyItem("clothing", "Blankets & dry clothing", 296.0, 740.0));
-
-        // ---- Vehicle presets: W (payload capacity) and Dmax (safe flood depth) ----
-        vehicleProfiles.add(new VehicleProfile("Rescue Boat", 550, 1200));
-        vehicleProfiles.add(new VehicleProfile("Relief Truck", 1000, 400));
     }
 
     public Graph getGraph() {
@@ -117,8 +40,20 @@ public class FloodDatabase {
         return supplyItems;
     }
 
-    public List<VehicleProfile> getVehicleProfiles() {
-        return vehicleProfiles;
+    public double getTruckCapacityKg() {
+        return truckCapacityKg;
+    }
+
+    public void setTruckCapacityKg(double truckCapacityKg) {
+        this.truckCapacityKg = truckCapacityKg;
+    }
+
+    public double getDMaxMm() {
+        return dMaxMm;
+    }
+
+    public void setDMaxMm(double dMaxMm) {
+        this.dMaxMm = dMaxMm;
     }
 
     public SupplyItem findSupplyItem(String id) {
@@ -130,92 +65,116 @@ public class FloodDatabase {
         return null;
     }
 
-    /* =======================================================
-       Field-report write operations (Controller -> Database)
-       ======================================================= */
+    public void loadSelangorSample() {
+        graph.clear();
+        supplyItems.clear();
+        truckCapacityKg = 500;
+        dMaxMm = 400;
 
-    /** Update d(n) for a given node. */
-    public boolean updateNodeFloodDepth(String nodeId, double depth) {
-        Node n = graph.getNode(nodeId);
-        if (n == null) {
-            return false;
-        }
-        n.setFloodDepthMm(depth);
-        return true;
+        addPlace("SERD", "Serdang Hospital", PlaceType.RELIEF_HUB, 100, 0.50, 0.35);
+        addPlace("UPM", "UPM Sports Complex", PlaceType.RELIEF_HUB, 100, 0.50, 0.65);
+        addPlace("RAYA", "Taman Serdang Raya", PlaceType.AFFECTED_AREA, 300, 0.62, 0.42);
+        addPlace("BAND", "Bandar Baru Bangi", PlaceType.AFFECTED_AREA, 390, 0.72, 0.55);
+        addPlace("KAJA", "Kajang Town Centre", PlaceType.AFFECTED_AREA, 350, 0.78, 0.48);
+        addPlace("BALA", "Balakong", PlaceType.AFFECTED_AREA, 450, 0.85, 0.38);
+        addPlace("TAMA", "Taman Connaught", PlaceType.AFFECTED_AREA, 280, 0.38, 0.52);
+        addPlace("ONN", "Bandar Tun Hussein Onn", PlaceType.AFFECTED_AREA, 420, 0.82, 0.62);
+        addPlace("SEME", "Seri Kembangan", PlaceType.AFFECTED_AREA, 400, 0.58, 0.58);
+        addPlace("PUCH", "Puchong", PlaceType.AFFECTED_AREA, 500, 0.22, 0.72);
+        addPlace("CHER", "Cheras", PlaceType.AFFECTED_AREA, 400, 0.30, 0.45);
+        addPlace("SEMPA", "Semenyih", PlaceType.AFFECTED_AREA, 410, 0.88, 0.30);
+        addPlace("AMPA", "Ampang", PlaceType.AFFECTED_AREA, 410, 0.18, 0.35);
+        addPlace("PUTRA", "Putra Heights", PlaceType.AFFECTED_AREA, 200, 0.28, 0.78);
+
+        addRoad("SERD", "RAYA", 12, 500, false);
+        addRoad("SERD", "UPM", 8, 500, false);
+        addRoad("SERD", "TAMA", 10, 500, false);
+        addRoad("SERD", "SEME", 15, 500, false);
+        addRoad("UPM", "RAYA", 5, 500, false);
+        addRoad("UPM", "BAND", 15, 500, false);
+        addRoad("UPM", "KAJA", 10, 500, false);
+        addRoad("UPM", "CHER", 12, 500, false);
+        addRoad("UPM", "PUTRA", 8, 500, false);
+        addRoad("RAYA", "BAND", 8, 400, false);
+        addRoad("RAYA", "KAJA", 12, 500, false);
+        addRoad("BAND", "KAJA", 5, 500, false);
+        addRoad("KAJA", "ONN", 6, 500, true);
+        addRoad("KAJA", "BALA", 8, 300, false);
+        addRoad("PUTRA", "PUCH", 9, 500, true);
+        addRoad("BAND", "SEMPA", 14, 500, true);
+        addRoad("CHER", "AMPA", 7, 500, true);
+        addRoad("SEME", "TAMA", 4, 500, false);
+        addRoad("AMPA", "ONN", 10, 500, false);
+        addRoad("SEME", "KAJA", 11, 500, false);
+        addRoad("TAMA", "CHER", 13, 500, false);
+
+        supplyItems.add(new SupplyItem("medical", "Medical Kit", 20, 10, 60));
+        supplyItems.add(new SupplyItem("water", "Clean Water", 10, 8, 100));
+        supplyItems.add(new SupplyItem("formula", "Infant Formula", 5, 9, 40));
+        supplyItems.add(new SupplyItem("rice", "Rice Ration", 15, 7, 200));
+        supplyItems.add(new SupplyItem("torch", "Torch+Battery", 2, 6, 50));
+        supplyItems.add(new SupplyItem("blanket", "Blanket", 3, 5, 80));
     }
 
-    /** Update w(u,v) (baseline travel cost) of the primary hub edge feeding this node. */
-    public boolean updateEdgeBaseWeight(String nodeId, double baseWeight) {
-        String[] pair = PRIMARY_EDGE.get(nodeId);
-        if (pair == null) {
-            return false;
-        }
-        Edge e = graph.findEdge(pair[0], pair[1]);
-        if (e == null) {
-            return false;
-        }
-        e.setBaseWeight(baseWeight);
-        return true;
+    private void addPlace(String id, String name, PlaceType type, double floodMm,
+                          double layoutX, double layoutY) {
+        Node node = new Node(id, name, type, floodMm);
+        node.setLayoutX(layoutX);
+        node.setLayoutY(layoutY);
+        graph.addNode(node);
     }
 
-    /** Update w(i) and/or v(i) for a supply item. */
-    public boolean updateSupplyItem(String itemId, Double weight, Double priority) {
-        SupplyItem item = findSupplyItem(itemId);
-        if (item == null) {
-            return false;
+    public void addPlace(String id, String name, PlaceType type, double floodMm) {
+        Node node = new Node(id, name, type, floodMm);
+        node.setLayoutX(0.5);
+        node.setLayoutY(0.5);
+        graph.addNode(node);
+    }
+
+    public void addRoad(String from, String to, double minutes, double limitKg, boolean flooded) {
+        if (graph.getNode(from) == null || graph.getNode(to) == null) {
+            return;
         }
-        if (weight != null) {
-            item.setWeightKg(weight);
+        if (graph.findEdge(from, to) != null) {
+            return;
         }
-        if (priority != null) {
-            item.setPriorityValue(priority);
+        graph.addEdge(new Edge(from, to, minutes, limitKg, flooded));
+    }
+
+    public void addSupplyItem(String name, double weight, double priority, double available) {
+        String id = "item" + (supplyItems.size() + 1);
+        supplyItems.add(new SupplyItem(id, name, weight, priority, available));
+    }
+
+    public void removeSupplyItem(int index) {
+        if (index >= 0 && index < supplyItems.size()) {
+            supplyItems.remove(index);
         }
-        return true;
     }
 
-    /** Directly update the baseline weight of any edge by its from/to pair. */
-    public boolean updateEdgeDirect(String from, String to, double weight) {
-        Edge e = graph.findEdge(from, to);
-        if (e == null) return false;
-        e.setBaseWeight(weight);
-        return true;
-    }
-
-    /** Add a brand-new node to V at runtime. */
-    public void addNode(String id, String name, PriorityLevel priority, double floodDepth) {
-        graph.addNode(new Node(id, name, priority, floodDepth));
-    }
-
-    /** Add a directed edge to E at runtime. */
-    public void addEdge(String from, String to, double weight) {
-        graph.addEdge(new Edge(from, to, weight));
-    }
-
-    /* =======================================================
-       Simple file-based persistence (read/write data)
-       ======================================================= */
-
-    /** Persist current node flood depths, edge weights and item values. */
     public synchronized void save() {
         try (PrintWriter pw = new PrintWriter(new FileWriter(DATA_FILE))) {
+            pw.printf("CONFIG,%.2f,%.2f%n", truckCapacityKg, dMaxMm);
             for (Node n : graph.getAllNodes()) {
-                pw.printf("NODE,%s,%s,%.2f%n",
-                        n.getId(),
-                        n.getPriority().name(),
-                        n.getFloodDepthMm());
+                pw.printf("NODE,%s,%s,%s,%.2f,%.4f,%.4f%n",
+                        n.getId(), n.getName(), n.getPlaceType().name(),
+                        n.getFloodDepthMm(), n.getLayoutX(), n.getLayoutY());
             }
             for (Edge e : graph.getEdges()) {
-                pw.printf("EDGE,%s,%s,%.2f%n", e.getFrom(), e.getTo(), e.getBaseWeight());
+                pw.printf("EDGE,%s,%s,%.2f,%.2f,%s%n",
+                        e.getFrom(), e.getTo(), e.getTravelMinutes(),
+                        e.getWeightLimitKg(), e.isFlooded());
             }
             for (SupplyItem s : supplyItems) {
-                pw.printf("ITEM,%s,%.2f,%.2f%n", s.getId(), s.getWeightKg(), s.getPriorityValue());
+                pw.printf("ITEM,%s,%s,%.2f,%.2f,%.2f%n",
+                        s.getId(), s.getName(), s.getWeightPerUnit(),
+                        s.getPriorityScore(), s.getAvailableKg());
             }
         } catch (IOException ex) {
-            System.err.println("[FloodDatabase] could not save " + DATA_FILE + ": " + ex.getMessage());
+            System.err.println("Could not save data: " + ex.getMessage());
         }
     }
 
-    /** Load previously-saved field reports on top of the seeded defaults, if present. */
     public synchronized void load() {
         File f = new File(DATA_FILE);
         if (!f.exists()) {
@@ -227,58 +186,88 @@ public class FloodDatabase {
                 if (line.isBlank()) {
                     continue;
                 }
-                String[] parts = line.split(",");
-                switch (parts[0]) {
-                    case "NODE": {
-                        if (parts.length == 3) {
-                            // old format: NODE,id,floodDepth
-                            Node n = graph.getNode(parts[1]);
-                            if (n != null) {
-                                n.setFloodDepthMm(Double.parseDouble(parts[2]));
-                            }
-                        } else if (parts.length >= 4) {
-                            // new format: NODE,id,PRIORITY,floodDepth
-                            // if node already exists just update depth;
-                            // if it doesn't (user added at runtime), create it
-                            Node existing = graph.getNode(parts[1]);
-                            double depth = Double.parseDouble(parts[3]);
-                            if (existing != null) {
-                                existing.setFloodDepthMm(depth);
-                            } else {
-                                PriorityLevel pl;
-                                try { pl = PriorityLevel.valueOf(parts[2]); }
-                                catch (IllegalArgumentException e) { pl = PriorityLevel.MODERATE; }
-                                graph.addNode(new Node(parts[1], parts[1], pl, depth));
-                            }
-                        }
+                String[] p = line.split(",", -1);
+                switch (p[0]) {
+                    case "CONFIG":
+                        truckCapacityKg = Double.parseDouble(p[1]);
+                        dMaxMm = Double.parseDouble(p[2]);
                         break;
-                    }
-                    case "EDGE": {
-                        Edge e = graph.findEdge(parts[1], parts[2]);
-                        if (e != null) {
-                            e.setBaseWeight(Double.parseDouble(parts[3]));
-                        } else {
-                            // edge was added at runtime — restore it
-                            if (graph.getNode(parts[1]) != null && graph.getNode(parts[2]) != null) {
-                                graph.addEdge(new Edge(parts[1], parts[2], Double.parseDouble(parts[3])));
-                            }
-                        }
+                    case "NODE":
+                        applyNodeLine(p);
                         break;
-                    }
-                    case "ITEM": {
-                        SupplyItem s = findSupplyItem(parts[1]);
-                        if (s != null) {
-                            s.setWeightKg(Double.parseDouble(parts[2]));
-                            s.setPriorityValue(Double.parseDouble(parts[3]));
-                        }
+                    case "EDGE":
+                        applyEdgeLine(p);
                         break;
-                    }
+                    case "ITEM":
+                        applyItemLine(p);
+                        break;
                     default:
-                        // ignore unknown lines
+                        break;
                 }
             }
         } catch (IOException ex) {
-            System.err.println("[FloodDatabase] could not load " + DATA_FILE + ": " + ex.getMessage());
+            System.err.println("Could not load data: " + ex.getMessage());
+        }
+    }
+
+    private void applyNodeLine(String[] p) {
+        if (p.length < 5) {
+            return;
+        }
+        String id = p[1];
+        Node existing = graph.getNode(id);
+        PlaceType type;
+        try {
+            type = PlaceType.valueOf(p[3]);
+        } catch (IllegalArgumentException e) {
+            type = PlaceType.AFFECTED_AREA;
+        }
+        double flood = Double.parseDouble(p[4]);
+        double lx = p.length > 5 ? Double.parseDouble(p[5]) : 0.5;
+        double ly = p.length > 6 ? Double.parseDouble(p[6]) : 0.5;
+        if (existing != null) {
+            existing.setName(p[2]);
+            existing.setPlaceType(type);
+            existing.setFloodDepthMm(flood);
+            existing.setLayoutX(lx);
+            existing.setLayoutY(ly);
+        } else {
+            Node node = new Node(id, p[2], type, flood);
+            node.setLayoutX(lx);
+            node.setLayoutY(ly);
+            graph.addNode(node);
+        }
+    }
+
+    private void applyEdgeLine(String[] p) {
+        if (p.length < 4) {
+            return;
+        }
+        Edge e = graph.findEdge(p[1], p[2]);
+        double minutes = Double.parseDouble(p[3]);
+        double limit = p.length > 4 ? Double.parseDouble(p[4]) : 500;
+        boolean flooded = p.length > 5 && Boolean.parseBoolean(p[5]);
+        if (e != null) {
+            e.setTravelMinutes(minutes);
+            e.setWeightLimitKg(limit);
+            e.setFlooded(flooded);
+        } else if (graph.getNode(p[1]) != null && graph.getNode(p[2]) != null) {
+            graph.addEdge(new Edge(p[1], p[2], minutes, limit, flooded));
+        }
+    }
+
+    private void applyItemLine(String[] p) {
+        if (p.length < 5) {
+            return;
+        }
+        SupplyItem item = findSupplyItem(p[1]);
+        if (item != null) {
+            item.setName(p[2]);
+            item.setWeightPerUnit(Double.parseDouble(p[3]));
+            item.setPriorityScore(Double.parseDouble(p[4]));
+            if (p.length > 5) {
+                item.setAvailableKg(Double.parseDouble(p[5]));
+            }
         }
     }
 }

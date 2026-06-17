@@ -1,26 +1,22 @@
 package model;
 
 /**
- * Represents a single vertex v &isin; V of the directed weighted graph
- * G = (V, E) described in the Problem Specification.
- *
- * Holds d(n): the current flood water depth at node n (in millimetres),
- * which is checked against Dmax (vehicle safety depth) by the
- * Impassable Corridor Constraint:
- *
- *      d(n) >= Dmax  -->  Node status = DISABLED
+ * Vertex in the road network graph.
+ * d(n) = flood depth in mm; node is impassable when d(n) >= Dmax.
  */
 public class Node {
 
-    private final String id;          // short code used in path strings, e.g. "UPM", "SKS"
-    private final String name;        // human-readable name, e.g. "UPM Main Base"
-    private final PriorityLevel priority;
-    private double floodDepthMm;      // d(n)
+    private final String id;
+    private String name;
+    private PlaceType placeType;
+    private double floodDepthMm;
+    private double layoutX;
+    private double layoutY;
 
-    public Node(String id, String name, PriorityLevel priority, double floodDepthMm) {
+    public Node(String id, String name, PlaceType placeType, double floodDepthMm) {
         this.id = id;
         this.name = name;
-        this.priority = priority;
+        this.placeType = placeType;
         this.floodDepthMm = floodDepthMm;
     }
 
@@ -32,8 +28,16 @@ public class Node {
         return name;
     }
 
-    public PriorityLevel getPriority() {
-        return priority;
+    public void setName(String name) {
+        this.name = name;
+    }
+
+    public PlaceType getPlaceType() {
+        return placeType;
+    }
+
+    public void setPlaceType(PlaceType placeType) {
+        this.placeType = placeType;
     }
 
     public double getFloodDepthMm() {
@@ -44,14 +48,34 @@ public class Node {
         this.floodDepthMm = floodDepthMm;
     }
 
-    /**
-     * Impassable Corridor Constraint (Problem Specification, Constraints):
-     * d(n) >= Dmax  -->  Node status = DISABLED
-     *
-     * @param dMax the vehicle's safe flood depth threshold (mm)
-     * @return true if this node must be treated as DISABLED for the given vehicle
-     */
+    public double getLayoutX() {
+        return layoutX;
+    }
+
+    public void setLayoutX(double layoutX) {
+        this.layoutX = layoutX;
+    }
+
+    public double getLayoutY() {
+        return layoutY;
+    }
+
+    public void setLayoutY(double layoutY) {
+        this.layoutY = layoutY;
+    }
+
+    public boolean isHub() {
+        return placeType == PlaceType.RELIEF_HUB;
+    }
+
     public boolean isDisabled(double dMax) {
         return floodDepthMm >= dMax;
+    }
+
+    public String shortLabel() {
+        if (id.length() <= 4) {
+            return id;
+        }
+        return id.substring(0, 4).toUpperCase();
     }
 }

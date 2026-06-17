@@ -1,0 +1,305 @@
+package gui;
+
+import model.Edge;
+import model.Graph;
+import model.Node;
+import model.PlaceType;
+
+import javax.swing.JPanel;
+import java.awt.BasicStroke;
+import java.awt.Color;
+import java.awt.Cursor;
+import java.awt.Dimension;
+import java.awt.Font;
+import java.awt.FontMetrics;
+import java.awt.Graphics;
+import java.awt.Graphics2D;
+import java.awt.RenderingHints;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
+import java.awt.geom.Point2D;
+import java.util.function.Supplier;
+
+public class MapGraphPanel extends JPanel {
+
+    private static final int NODE_R = 22;
+
+    private Supplier<Graph> graphSupplier;
+    private String selectedId;
+    private String roadStartId;
+    private boolean addRoadMode;
+
+    private Node dragNode;
+    private int dragOffsetX;
+    private int dragOffsetY;
+
+    private NodeSelectionListener selectionListener;
+    private Runnable graphChangeListener;
+    private RoadAddedListener roadAddedListener;
+
+    public MapGraphPanel() {
+        setBackground(new Color(30, 34, 42));
+        setPreferredSize(new Dimension(700, 320));
+        setMinimumSize(new Dimension(500, 260));
+
+        MouseAdapter mouse = new MouseAdapter() {
+            @Override
+            public void mousePressed(MouseEvent e) {
+                handlePress(e);
+            }
+
+            @Override
+            public void mouseReleased(MouseEvent e) {
+                if (dragNode != null) {
+                    dragNode = null;
+                    if (graphChangeListener != null) {
+                        graphChangeListener.run();
+                    }
+                }
+            }
+
+            @Override
+            public void mouseDragged(MouseEvent e) {
+                if (dragNode != null) {
+                    moveNode(dragNode, e.getX(), e.getY());
+                    repaint();
+                }
+            }
+        };
+        addMouseListener(mouse);
+        addMouseMotionListener(mouse);
+    }
+
+    public void setGraphSupplier(Supplier<Graph> graphSupplier) {
+        this.graphSupplier = graphSupplier;
+    }
+
+    public void setSelectionListener(NodeSelectionListener listener) {
+        this.selectionListener = listener;
+    }
+
+    public void setGraphChangeListener(Runnable listener) {
+        this.graphChangeListener = listener;
+    }
+
+    public void setOnRoadAdded(RoadAddedListener listener) {
+        this.roadAddedListener = listener;
+    }
+
+    public String getSelectedNodeId() {
+        return selectedId;
+    }
+
+    public void clearSelection() {
+        selectedId = null;
+        repaint();
+    }
+
+    public void startAddRoadMode() {
+        addRoadMode = true;
+        roadStartId = null;
+        setCursor(Cursor.getPredefinedCursor(Cursor.CROSSHAIR_CURSOR));
+    }
+
+    public void refresh() {
+        repaint();
+    }
+
+    public void placeNewNode(String id) {
+        Graph graph = graphSupplier.get();
+        Node node = graph.getNode(id);
+        if (node != null) {
+            node.setLayoutX(0.5);
+            node.setLayoutY(0.5);
+        }
+        selectedId = id;
+        repaint();
+        notifySelection();
+    }
+
+    public void rearrangeCircular() {
+        Graph graph = graphSupplier.get();
+        int count = graph.getAllNodes().size();
+        if (count == 0) {
+            return;
+        }
+        int i = 0;
+        for (Node n : graph.getAllNodes()) {
+            double angle = (2 * Math.PI * i) / count - Math.PI / 2;
+            n.setLayoutX(0.5 + 0.38 * Math.cos(angle));
+            n.setLayoutY(0.5 + 0.38 * Math.sin(angle));
+            i++;
+        }
+        repaint();
+    }
+
+    private void handlePress(MouseEvent e) {
+        Graph graph = graphSupplier.get();
+        Node hit = findNodeAt(graph, e.getX(), e.getY());
+        if (addRoadMode) {
+            if (hit == null) {
+                return;
+            }
+            if (roadStartId == null) {
+                roadStartId = hit.getId();
+            } else if (!roadStartId.equals(hit.getId())) {
+                if (roadAddedListener != null) {
+                    roadAddedListener.onRoadAdded(roadStartId, hit.getId());
+                }
+                addRoadMode = false;
+                roadStartId = null;
+                setCursor(Cursor.getDefaultCursor());
+            }
+            return;
+        }
+
+        if (hit != null) {
+            selectedId = hit.getId();
+            dragNode = hit;
+            Point2D p = toScreen(hit);
+            dragOffsetX = (int) (e.getX() - p.getX());
+            dragOffsetY = (int) (e.getY() - p.getY());
+            notifySelection();
+            repaint();
+        } else {
+            selectedId = null;
+            notifySelection();
+            repaint();
+        }
+    }
+
+    private void notifySelection() {
+        if (selectionListener == null) {
+            return;
+        }
+        Graph graph = graphSupplier.get();
+        selectionListener.onNodeSelected(selectedId != null ? graph.getNode(selectedId) : null);
+    }
+
+    private void moveNode(Node node, int mouseX, int mouseY) {
+        int w = getWidth();
+        int h = getHeight();
+        if (w <= 0 || h <= 0) {
+            return;
+        }
+        double x = (mouseX - dragOffsetX - NODE_R) / (double) (w - 2 * NODE_R);
+        double y = (mouseY - dragOffsetY - NODE_R) / (double) (h - 2 * NODE_R);
+        node.setLayoutX(clamp(x));
+        node.setLayoutY(clamp(y));
+    }
+
+    private double clamp(double v) {
+        return Math.max(0.05, Math.min(0.95, v));
+    }
+
+    private Node findNodeAt(Graph graph, int x, int y) {
+        for (Node n : graph.getAllNodes()) {
+            Point2D p = toScreen(n);
+            double dx = x - p.getX();
+            double dy = y - p.getY();
+            if (dx * dx + dy * dy <= NODE_R * NODE_R) {
+                return n;
+            }
+        }
+        return null;
+    }
+
+    private Point2D toScreen(Node n) {
+        int w = Math.max(getWidth(), 1);
+        int h = Math.max(getHeight(), 1);
+        double x = NODE_R + n.getLayoutX() * (w - 2 * NODE_R);
+        double y = NODE_R + n.getLayoutY() * (h - 2 * NODE_R);
+        return new Point2D.Double(x, y);
+    }
+
+    @Override
+    protected void paintComponent(Graphics g) {
+        super.paintComponent(g);
+        if (graphSupplier == null) {
+            return;
+        }
+        Graphics2D g2 = (Graphics2D) g.create();
+        g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+
+        Graph graph = graphSupplier.get();
+
+        for (Edge edge : graph.getEdges()) {
+            Node from = graph.getNode(edge.getFrom());
+            Node to = graph.getNode(edge.getTo());
+            if (from == null || to == null) {
+                continue;
+            }
+            Point2D p1 = toScreen(from);
+            Point2D p2 = toScreen(to);
+            if (edge.isFlooded()) {
+                g2.setColor(new Color(120, 120, 120));
+                g2.setStroke(new BasicStroke(1.5f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND,
+                        0, new float[]{6, 6}, 0));
+            } else {
+                g2.setColor(new Color(170, 175, 185));
+                g2.setStroke(new BasicStroke(1.8f));
+            }
+            g2.drawLine((int) p1.getX(), (int) p1.getY(), (int) p2.getX(), (int) p2.getY());
+
+            int mx = (int) ((p1.getX() + p2.getX()) / 2);
+            int my = (int) ((p1.getY() + p2.getY()) / 2);
+            g2.setFont(new Font("SansSerif", Font.PLAIN, 11));
+            g2.setColor(new Color(200, 205, 215));
+            g2.drawString((int) edge.getTravelMinutes() + "m", mx - 8, my - 4);
+        }
+
+        for (Node node : graph.getAllNodes()) {
+            Point2D p = toScreen(node);
+            int cx = (int) p.getX();
+            int cy = (int) p.getY();
+
+            boolean selected = node.getId().equals(selectedId);
+            Color fill = node.getPlaceType() == PlaceType.RELIEF_HUB
+                    ? new Color(45, 95, 70) : new Color(75, 55, 45);
+            Color border = selected ? Color.WHITE : outlineColor(node);
+            if (node.getPlaceType() == PlaceType.RELIEF_HUB) {
+                g2.setColor(new Color(230, 190, 40));
+                g2.setFont(new Font("SansSerif", Font.BOLD, 10));
+                g2.drawString("HUB", cx - 12, cy - NODE_R - 4);
+            }
+
+            g2.setColor(fill);
+            g2.fillOval(cx - NODE_R, cy - NODE_R, NODE_R * 2, NODE_R * 2);
+            g2.setColor(border);
+            g2.setStroke(new BasicStroke(selected ? 3f : 2f));
+            g2.drawOval(cx - NODE_R, cy - NODE_R, NODE_R * 2, NODE_R * 2);
+
+            g2.setColor(Color.WHITE);
+            g2.setFont(new Font("SansSerif", Font.BOLD, 11));
+            FontMetrics fm = g2.getFontMetrics();
+            String label = node.shortLabel();
+            g2.drawString(label, cx - fm.stringWidth(label) / 2, cy + 4);
+
+            g2.setColor(new Color(180, 200, 220));
+            g2.setFont(new Font("SansSerif", Font.PLAIN, 10));
+            String depth = (int) node.getFloodDepthMm() + "mm";
+            g2.drawString(depth, cx + NODE_R + 4, cy + 4);
+        }
+
+        g2.dispose();
+    }
+
+    private Color outlineColor(Node node) {
+        double d = node.getFloodDepthMm();
+        if (d >= 400) {
+            return new Color(200, 70, 70);
+        }
+        if (d >= 300) {
+            return new Color(220, 140, 50);
+        }
+        return new Color(70, 140, 210);
+    }
+
+    public interface NodeSelectionListener {
+        void onNodeSelected(Node node);
+    }
+
+    public interface RoadAddedListener {
+        void onRoadAdded(String fromId, String toId);
+    }
+}

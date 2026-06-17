@@ -7,13 +7,6 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
-/**
- * The directed weighted graph G = (V, E) representing the regional
- * road network described in the Problem Specification.
- *
- * V: command hubs and affected target zones (Node objects)
- * E: connecting road links (Edge objects, with dynamic weight w(u,v))
- */
 public class Graph {
 
     private final Map<String, Node> nodes = new LinkedHashMap<>();
@@ -30,6 +23,38 @@ public class Graph {
         adjacency.computeIfAbsent(edge.getFrom(), k -> new ArrayList<>()).add(edge);
     }
 
+    public boolean removeNode(String id) {
+        if (!nodes.containsKey(id)) {
+            return false;
+        }
+        nodes.remove(id);
+        adjacency.remove(id);
+        edges.removeIf(e -> e.getFrom().equals(id) || e.getTo().equals(id));
+        for (List<Edge> list : adjacency.values()) {
+            list.removeIf(e -> e.getTo().equals(id));
+        }
+        return true;
+    }
+
+    public boolean removeEdge(String from, String to) {
+        Edge found = findEdge(from, to);
+        if (found == null) {
+            return false;
+        }
+        edges.remove(found);
+        List<Edge> outgoing = adjacency.get(from);
+        if (outgoing != null) {
+            outgoing.remove(found);
+        }
+        return true;
+    }
+
+    public void clear() {
+        nodes.clear();
+        adjacency.clear();
+        edges.clear();
+    }
+
     public Node getNode(String id) {
         return nodes.get(id);
     }
@@ -42,12 +67,10 @@ public class Graph {
         return edges;
     }
 
-    /** All edges (u, v) leaving node u, i.e. adjacency list of u. */
     public List<Edge> getOutgoingEdges(String nodeId) {
         return adjacency.getOrDefault(nodeId, Collections.emptyList());
     }
 
-    /** Find the specific directed edge u -> v, or null if it does not exist. */
     public Edge findEdge(String from, String to) {
         for (Edge e : edges) {
             if (e.getFrom().equals(from) && e.getTo().equals(to)) {
@@ -57,12 +80,13 @@ public class Graph {
         return null;
     }
 
-    /**
-     * Edge (u,v) passability check used by Dijkstra's algorithm.
-     * An edge is impassable if either endpoint is flooded beyond Dmax,
-     * per the Impassable Corridor Constraint.
-     */
-    public boolean isEdgePassable(Edge edge, double dMax) {
+    public boolean isEdgePassable(Edge edge, double dMax, double truckWeightKg) {
+        if (edge.isFlooded()) {
+            return false;
+        }
+        if (truckWeightKg > edge.getWeightLimitKg()) {
+            return false;
+        }
         Node u = nodes.get(edge.getFrom());
         Node v = nodes.get(edge.getTo());
         if (u == null || v == null) {
