@@ -2,16 +2,23 @@ package gui;
 
 import controller.ReliefPlannerController;
 import model.DeliveryPlan;
+import model.DeliveryRequest;
 import model.DeliveryRoute;
+import model.Graph;
 import model.KnapsackLineItem;
 import model.KnapsackResult;
+import model.Node;
+import model.PlaceType;
 
 import javax.swing.BorderFactory;
 import javax.swing.JButton;
+import javax.swing.JComboBox;
 import javax.swing.JLabel;
+import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JProgressBar;
 import javax.swing.JScrollPane;
+import javax.swing.JSplitPane;
 import javax.swing.JTabbedPane;
 import javax.swing.JTable;
 import javax.swing.JTextArea;
@@ -30,9 +37,13 @@ public class DeliveryPlanPanel extends JPanel {
     private final JLabel routeStats = new JLabel(" ");
     private final JLabel loadStats = new JLabel(" ");
     private final JProgressBar truckBar = new JProgressBar(0, 100);
+    private final DefaultTableModel planRequestModel;
     private final DefaultTableModel routeModel;
     private final DefaultTableModel loadModel;
+    private final JTable planRequestTable;
     private final JTextArea adviceArea = new JTextArea();
+    private final JComboBox<NodeChoice> hubBox = new JComboBox<>();
+    private final JComboBox<NodeChoice> destinationBox = new JComboBox<>();
     private final JButton fractionalBtn = new JButton("Fractional Knapsack");
     private final JButton greedyBtn = new JButton("Greedy Algorithm");
 
@@ -60,6 +71,14 @@ public class DeliveryPlanPanel extends JPanel {
         barPanel.add(truckBar, BorderLayout.CENTER);
         top.add(barPanel, BorderLayout.SOUTH);
         add(top, BorderLayout.NORTH);
+
+        planRequestModel = new DefaultTableModel(new String[]{"Relief Hub", "Destination"}, 0) {
+            @Override
+            public boolean isCellEditable(int row, int column) {
+                return false;
+            }
+        };
+        planRequestTable = new JTable(planRequestModel);
 
         routeModel = new DefaultTableModel(
                 new String[]{"Relief Hub", "Destination", "Status", "Travel Time", "Suggested Route"}, 0) {
@@ -96,10 +115,113 @@ public class DeliveryPlanPanel extends JPanel {
         adviceArea.setWrapStyleWord(true);
 
         JTabbedPane tabs = new JTabbedPane();
-        tabs.addTab("Where to Send Help", new JScrollPane(routeTable));
+        tabs.addTab("Where to Send Help", buildRoutePanel(routeTable));
         tabs.addTab("What to Load on Truck", loadPanel);
         tabs.addTab("Simple Advice", new JScrollPane(adviceArea));
         add(tabs, BorderLayout.CENTER);
+
+        refreshDeliveryRequestControls();
+    }
+
+    private JPanel buildRoutePanel(JTable routeTable) {
+        JPanel routePanel = new JPanel(new BorderLayout(6, 6));
+        JPanel editor = new JPanel(new BorderLayout(6, 6));
+        editor.setBorder(BorderFactory.createTitledBorder("Delivery plan setup"));
+
+        JPanel fields = new JPanel(new FlowLayout(FlowLayout.LEFT, 6, 4));
+        fields.add(new JLabel("Hub:"));
+        fields.add(hubBox);
+        fields.add(new JLabel("Destination:"));
+        fields.add(destinationBox);
+
+        JButton addPlan = new JButton("Add Delivery");
+        JButton removePlan = new JButton("Remove Selected");
+        JButton resetPlan = new JButton("Reset Sample Plan");
+        addPlan.addActionListener(e -> addDeliveryRequest());
+        removePlan.addActionListener(e -> removeSelectedDeliveryRequest());
+        resetPlan.addActionListener(e -> resetSampleDeliveryRequests());
+        fields.add(addPlan);
+        fields.add(removePlan);
+        fields.add(resetPlan);
+
+        editor.add(fields, BorderLayout.NORTH);
+        JScrollPane requestScroll = new JScrollPane(planRequestTable);
+        editor.add(requestScroll, BorderLayout.CENTER);
+
+        JSplitPane split = new JSplitPane(JSplitPane.VERTICAL_SPLIT, editor, new JScrollPane(routeTable));
+        split.setResizeWeight(0.35);
+        split.setOneTouchExpandable(true);
+        split.setContinuousLayout(true);
+        routePanel.add(split, BorderLayout.CENTER);
+        return routePanel;
+    }
+
+    public void refreshDeliveryRequestControls() {
+        hubBox.removeAllItems();
+        destinationBox.removeAllItems();
+
+        Graph graph = controller.getGraph();
+        for (Node node : graph.getAllNodes()) {
+            NodeChoice choice = new NodeChoice(node.getId(), node.getName());
+            if (node.isHub()) {
+                hubBox.addItem(choice);
+            } else if (node.getPlaceType() == PlaceType.AFFECTED_AREA) {
+                destinationBox.addItem(choice);
+            }
+        }
+
+        refreshDeliveryRequestTable();
+    }
+
+    private void refreshDeliveryRequestTable() {
+        planRequestModel.setRowCount(0);
+        Graph graph = controller.getGraph();
+        for (DeliveryRequest request : controller.getDeliveryRequests()) {
+            Node hub = graph.getNode(request.getHubId());
+            Node destination = graph.getNode(request.getDestinationId());
+            planRequestModel.addRow(new Object[]{
+                    hub != null ? hub.getName() : request.getHubId(),
+                    destination != null ? destination.getName() : request.getDestinationId()
+            });
+        }
+    }
+
+    private void addDeliveryRequest() {
+        NodeChoice hub = (NodeChoice) hubBox.getSelectedItem();
+        NodeChoice destination = (NodeChoice) destinationBox.getSelectedItem();
+        if (hub == null || destination == null) {
+            JOptionPane.showMessageDialog(this, "Select a hub and destination first.");
+            return;
+        }
+        controller.addDeliveryRequest(hub.id, destination.id);
+        refreshDeliveryRequestTable();
+        currentPlan = null;
+        routeModel.setRowCount(0);
+        summaryLabel.setText("Run Calculate Delivery Plan to see results.");
+        routeStats.setText(" ");
+    }
+
+    private void removeSelectedDeliveryRequest() {
+        int row = planRequestTable.getSelectedRow();
+        if (row < 0) {
+            JOptionPane.showMessageDialog(this, "Select a delivery plan row first.");
+            return;
+        }
+        controller.removeDeliveryRequest(planRequestTable.convertRowIndexToModel(row));
+        refreshDeliveryRequestTable();
+        currentPlan = null;
+        routeModel.setRowCount(0);
+        summaryLabel.setText("Run Calculate Delivery Plan to see results.");
+        routeStats.setText(" ");
+    }
+
+    private void resetSampleDeliveryRequests() {
+        controller.resetDeliveryRequestsToSample();
+        refreshDeliveryRequestControls();
+        currentPlan = null;
+        routeModel.setRowCount(0);
+        summaryLabel.setText("Run Calculate Delivery Plan to see results.");
+        routeStats.setText(" ");
     }
 
     public void showPlan(DeliveryPlan plan) {
@@ -119,11 +241,10 @@ public class DeliveryPlanPanel extends JPanel {
             String routeText = r.routeText();
 
             if (r.canDeliver()) {
-                statusText = "CAN DELIVER";
+                statusText = "Can Deliver";
                 timeText = ((int) r.getTravelMinutes()) + " min";
             } else {
-                // NEW STATUS TEXT
-                statusText = "PENDING - WAITING FOR VEHICLE";
+                statusText = "Blocked";
                 timeText = "-";
                 routeText = "Need boat. Waiting for rescue vehicle.";
             }
@@ -199,7 +320,23 @@ public class DeliveryPlanPanel extends JPanel {
     }
 
     public void refresh() {
+        refreshDeliveryRequestControls();
         showPlan(controller.getLastPlan());
+    }
+
+    private static class NodeChoice {
+        private final String id;
+        private final String name;
+
+        private NodeChoice(String id, String name) {
+            this.id = id;
+            this.name = name;
+        }
+
+        @Override
+        public String toString() {
+            return name;
+        }
     }
 
     private static class StatusRenderer extends DefaultTableCellRenderer {
@@ -209,9 +346,9 @@ public class DeliveryPlanPanel extends JPanel {
                                                                 int row, int column) {
             java.awt.Component c = super.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, column);
             if (!isSelected && value != null) {
-                if ("CAN DELIVER".equals(value.toString())) {
+                if ("Can Deliver".equalsIgnoreCase(value.toString())) {
                     c.setBackground(new Color(200, 235, 200));
-                } else if ("BLOCKED".equals(value.toString())) {
+                } else if ("Blocked".equalsIgnoreCase(value.toString())) {
                     c.setBackground(new Color(245, 200, 200));
                 } else {
                     c.setBackground(Color.WHITE);

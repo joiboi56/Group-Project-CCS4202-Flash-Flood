@@ -22,12 +22,7 @@ public class DijkstraRouter {
     // Hard cap: 3 hours (180 minutes) for emergency rescue
     private static final double MAX_ACCEPTABLE_TIME = 180.0;
 
-    // Vehicle speeds (km/h)
-    private static final double CAR_SPEED_KMPH = 50.0;
-    private static final double BOAT_SPEED_KMPH = 10.0;
-
-    // Depth thresholds (mm)
-    private static final double CAR_LIMIT_MM = 700.0;
+    private static final double BLOCKED_FLOOD_DEPTH_MM = 700.0;
 
     public RouteResult computeShortestPaths(Graph graph, String sourceId, double dMax, double truckWeightKg) {
         Map<String, Double> dist = new HashMap<>();
@@ -54,29 +49,10 @@ public class DijkstraRouter {
                 String v = edge.getTo();
                 if (visited.contains(v)) continue;
 
-                // --- VEHICLE LOGIC START ---
-                double edgeTravelTime = Double.POSITIVE_INFINITY;
+                if (truckWeightKg > edge.getWeightLimitKg()) continue;
+                if (edge.isFlooded() || edge.getFloodDepthMm() >= BLOCKED_FLOOD_DEPTH_MM) continue;
 
-                // 1. Check Weight Limit (Always applies)
-                if (truckWeightKg <= edge.getWeightLimitKg()) {
-
-                    // 2. If not flooded or flood depth is LESS than 700mm -> USE CAR
-                    if (!edge.isFlooded() || edge.getFloodDepthMm() < CAR_LIMIT_MM) {
-                        // Calculate time based on CAR speed
-                        double distanceKm = (edge.getTravelMinutes() / 60.0) * CAR_SPEED_KMPH;
-                        edgeTravelTime = (distanceKm / CAR_SPEED_KMPH) * 60.0;
-                    }
-                    // 3. If flood depth is >= 700mm -> USE BOAT
-                    else {
-                        // Calculate time based on BOAT speed
-                        double distanceKm = (edge.getTravelMinutes() / 60.0) * CAR_SPEED_KMPH;
-                        edgeTravelTime = (distanceKm / BOAT_SPEED_KMPH) * 60.0;
-                    }
-                }
-                // --- VEHICLE LOGIC END ---
-
-                // Skip if no vehicle can access (or weight limit exceeded)
-                if (Double.isInfinite(edgeTravelTime)) continue;
+                double edgeTravelTime = edge.getTravelMinutes();
 
                 double candidate = dist.get(u) + edgeTravelTime;
 

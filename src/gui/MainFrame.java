@@ -51,6 +51,7 @@ public class MainFrame extends JFrame {
     private void runCalculation() {
         mapPanel.applyRoadTableEdits();
         suppliesPanel.applyEdits();
+        planPanel.refreshDeliveryRequestControls();
         DeliveryPlan plan = controller.calculateDeliveryPlan();
         planPanel.showPlan(plan);
         tabs.setSelectedIndex(2);
@@ -60,7 +61,7 @@ public class MainFrame extends JFrame {
     }
 
     private void refreshPlan() {
-        planPanel.showPlan(controller.getLastPlan());
+        planPanel.refresh();
     }
 
     public static void launch(ReliefPlannerController controller) {

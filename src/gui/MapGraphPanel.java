@@ -23,6 +23,7 @@ import java.util.function.Supplier;
 public class MapGraphPanel extends JPanel {
 
     private static final int NODE_R = 22;
+    private static final double BLOCKED_FLOOD_DEPTH_MM = 700.0;
 
     private Supplier<Graph> graphSupplier;
     private String selectedId;
@@ -231,7 +232,7 @@ public class MapGraphPanel extends JPanel {
             }
             Point2D p1 = toScreen(from);
             Point2D p2 = toScreen(to);
-            if (edge.isFlooded()) {
+            if (edge.isFlooded() || edge.getFloodDepthMm() >= BLOCKED_FLOOD_DEPTH_MM) {
                 g2.setColor(new Color(120, 120, 120));
                 g2.setStroke(new BasicStroke(1.5f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND,
                         0, new float[]{6, 6}, 0));

@@ -71,42 +71,34 @@ public class FloodDatabase {
         truckCapacityKg = 500;
         dMaxMm = 400;
 
-        addPlace("SERD", "Serdang Hospital", PlaceType.RELIEF_HUB, 100, 0.50, 0.35);
-        addPlace("UPM", "UPM Sports Complex", PlaceType.RELIEF_HUB, 100, 0.50, 0.65);
-        addPlace("RAYA", "Taman Serdang Raya", PlaceType.AFFECTED_AREA, 300, 0.62, 0.42);
-        addPlace("BAND", "Bandar Baru Bangi", PlaceType.AFFECTED_AREA, 390, 0.72, 0.55);
-        addPlace("KAJA", "Kajang Town Centre", PlaceType.AFFECTED_AREA, 350, 0.78, 0.48);
-        addPlace("BALA", "Balakong", PlaceType.AFFECTED_AREA, 450, 0.85, 0.38);
-        addPlace("TAMA", "Taman Connaught", PlaceType.AFFECTED_AREA, 280, 0.38, 0.52);
-        addPlace("ONN", "Bandar Tun Hussein Onn", PlaceType.AFFECTED_AREA, 420, 0.82, 0.62);
-        addPlace("SEME", "Seri Kembangan", PlaceType.AFFECTED_AREA, 320, 0.58, 0.58);
-        addPlace("PUCH", "Puchong", PlaceType.AFFECTED_AREA, 500, 0.22, 0.72);
-        addPlace("CHER", "Cheras", PlaceType.AFFECTED_AREA, 400, 0.30, 0.45);
-        addPlace("SEMPA", "Semenyih", PlaceType.AFFECTED_AREA, 410, 0.88, 0.30);
-        addPlace("AMPA", "Ampang", PlaceType.AFFECTED_AREA, 410, 0.18, 0.35);
-        addPlace("PUTRA", "Putra Heights", PlaceType.AFFECTED_AREA, 200, 0.28, 0.78);
+        addPlace("UPM", "UPM", PlaceType.RELIEF_HUB, 100, 0.50, 0.18);
+        addPlace("UNIT", "UNITEN", PlaceType.RELIEF_HUB, 120, 0.50, 0.42);
+        addPlace("MERAB", "SK Sungai Merab", PlaceType.AFFECTED_AREA, 350, 0.28, 0.70);
+        addPlace("RAMAL", "SMK Sungai Ramal", PlaceType.AFFECTED_AREA, 360, 0.72, 0.70);
+        addPlace("SKSS", "SK Sri Serdang", PlaceType.AFFECTED_AREA, 260, 0.18, 0.32);
+        addPlace("SMKSS", "SMK Sri Serdang", PlaceType.AFFECTED_AREA, 340, 0.82, 0.32);
+        addPlace("U360", "Univ 360", PlaceType.AFFECTED_AREA, 320, 0.22, 0.52);
+        addPlace("KTMB", "KTMB", PlaceType.AFFECTED_AREA, 300, 0.78, 0.52);
 
-        addRoad("SERD", "RAYA", 12, 500, false);
-        addRoad("SERD", "UPM", 8, 500, false);
-        addRoad("SERD", "TAMA", 10, 500, false);
-        addRoad("SERD", "SEME", 15, 500, false);
-        addRoad("UPM", "RAYA", 5, 500, false);
-        addRoad("UPM", "BAND", 15, 500, false);
-        addRoad("UPM", "KAJA", 10, 500, false);
-        addRoad("UPM", "CHER", 12, 500, false);
-        addRoad("UPM", "PUTRA", 8, 500, true);
-        addRoad("RAYA", "BAND", 8, 400, false);
-        addRoad("RAYA", "KAJA", 12, 500, false);
-        addRoad("BAND", "KAJA", 5, 500, false);
-        addRoad("KAJA", "ONN", 6, 500, true);
-        addRoad("KAJA", "BALA", 8, 300, false);
-        addRoad("PUTRA", "PUCH", 9, 500, true);
-        addRoad("BAND", "SEMPA", 14, 500, true);
-        addRoad("CHER", "AMPA", 7, 500, true);
-        addRoad("SEME", "TAMA", 4, 500, false);
-        addRoad("AMPA", "ONN", 10, 500, false);
-        addRoad("SEME", "KAJA", 11, 500, false);
-        addRoad("TAMA", "CHER", 13, 500, false);
+        addRoad("UPM", "UNIT", 9, 500, false, 120);
+        addRoad("UNIT", "MERAB", 11, 500, true, 760);
+        addRoad("UNIT", "RAMAL", 10, 500, false, 680);
+        addRoad("UPM", "SKSS", 6, 500, false, 260);
+        addRoad("UPM", "SMKSS", 8, 500, false, 340);
+        addRoad("UPM", "U360", 7, 500, false, 420);
+        addRoad("UPM", "KTMB", 9, 500, false, 300);
+        addRoad("SKSS", "SMKSS", 5, 500, false, 340);
+        addRoad("SKSS", "U360", 4, 500, false, 420);
+        addRoad("SKSS", "KTMB", 7, 500, false, 300);
+        addRoad("SMKSS", "SKSS", 5, 500, false, 260);
+        addRoad("SMKSS", "U360", 6, 500, false, 420);
+        addRoad("SMKSS", "KTMB", 4, 500, false, 300);
+        addRoad("U360", "SKSS", 4, 500, false, 260);
+        addRoad("U360", "SMKSS", 6, 500, false, 340);
+        addRoad("U360", "KTMB", 5, 500, false, 300);
+        addRoad("KTMB", "SKSS", 7, 500, false, 260);
+        addRoad("KTMB", "SMKSS", 4, 500, false, 340);
+        addRoad("KTMB", "U360", 5, 500, false, 420);
 
         supplyItems.add(new SupplyItem("medical", "Medical Kit", 20, 10, 60));
         supplyItems.add(new SupplyItem("water", "Clean Water", 10, 8, 100));
@@ -144,6 +136,17 @@ public class FloodDatabase {
         double avgFloodDepth = (nodeFrom.getFloodDepthMm() + nodeTo.getFloodDepthMm()) / 2.0;
 
         graph.addEdge(new Edge(from, to, minutes, limitKg, flooded, avgFloodDepth)); // <--- Pass depth
+    }
+
+    private void addRoad(String from, String to, double minutes, double limitKg,
+                         boolean flooded, double floodDepthMm) {
+        if (graph.getNode(from) == null || graph.getNode(to) == null) {
+            return;
+        }
+        if (graph.findEdge(from, to) != null) {
+            return;
+        }
+        graph.addEdge(new Edge(from, to, minutes, limitKg, flooded, floodDepthMm));
     }
     public void addSupplyItem(String name, double weight, double priority, double available) {
         String id = "item" + (supplyItems.size() + 1);

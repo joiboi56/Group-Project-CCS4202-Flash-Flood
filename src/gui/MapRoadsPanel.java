@@ -25,6 +25,8 @@ import java.awt.GridLayout;
 
 public class MapRoadsPanel extends JPanel {
 
+    private static final double BLOCKED_FLOOD_DEPTH_MM = 700.0;
+
     private final ReliefPlannerController controller;
     private final Runnable onPlanReady;
 
@@ -116,6 +118,7 @@ public class MapRoadsPanel extends JPanel {
             graphPanel.refresh();
             refreshRoadTable();
             clearEditor();
+            onPlanReady.run();
         });
 
         bar.add(addPlace);
@@ -186,6 +189,7 @@ public class MapRoadsPanel extends JPanel {
             graphPanel.placeNewNode(id);
             controller.save();
             refreshRoadTable();
+            onPlanReady.run();
         } catch (NumberFormatException ex) {
             JOptionPane.showMessageDialog(this, "Invalid flood level.");
         }
@@ -207,6 +211,7 @@ public class MapRoadsPanel extends JPanel {
         refreshRoadTable();
         graphPanel.refresh();
         clearEditor();
+        onPlanReady.run();
     }
 
     private void showSelectedNode(Node node) {
@@ -233,6 +238,7 @@ public class MapRoadsPanel extends JPanel {
             controller.save();
             graphPanel.refresh();
             refreshRoadTable();
+            onPlanReady.run();
         } catch (NumberFormatException ex) {
             JOptionPane.showMessageDialog(this, "Flood level must be a number.");
         }
@@ -255,7 +261,7 @@ public class MapRoadsPanel extends JPanel {
                     to != null ? to.getName() : e.getTo(),
                     String.valueOf(e.getTravelMinutes()),
                     String.valueOf(e.getWeightLimitKg()),
-                    e.isFlooded()
+                    e.isFlooded() || e.getFloodDepthMm() >= BLOCKED_FLOOD_DEPTH_MM
             });
         }
     }
@@ -283,6 +289,7 @@ public class MapRoadsPanel extends JPanel {
             controller.save();
             refreshRoadTable();
             graphPanel.refresh();
+            onPlanReady.run();
         }
     }
 
@@ -311,11 +318,18 @@ public class MapRoadsPanel extends JPanel {
             try {
                 edge.setTravelMinutes(Double.parseDouble(roadModel.getValueAt(i, 2).toString()));
                 edge.setWeightLimitKg(Double.parseDouble(roadModel.getValueAt(i, 3).toString()));
-                edge.setFlooded((Boolean) roadModel.getValueAt(i, 4));
+                boolean blocked = (Boolean) roadModel.getValueAt(i, 4);
+                edge.setFlooded(blocked);
+                if (blocked) {
+                    edge.setFloodDepthMm(Math.max(edge.getFloodDepthMm(), BLOCKED_FLOOD_DEPTH_MM));
+                } else if (edge.getFloodDepthMm() >= BLOCKED_FLOOD_DEPTH_MM) {
+                    edge.setFloodDepthMm(0);
+                }
             } catch (NumberFormatException ignored) {
             }
         }
         controller.save();
         graphPanel.refresh();
+        onPlanReady.run();
     }
 }
