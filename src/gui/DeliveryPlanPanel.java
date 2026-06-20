@@ -7,6 +7,7 @@ import model.KnapsackLineItem;
 import model.KnapsackResult;
 
 import javax.swing.BorderFactory;
+import javax.swing.JButton;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.JProgressBar;
@@ -18,6 +19,7 @@ import javax.swing.table.DefaultTableCellRenderer;
 import javax.swing.table.DefaultTableModel;
 import java.awt.BorderLayout;
 import java.awt.Color;
+import java.awt.FlowLayout;
 import java.awt.GridLayout;
 
 public class DeliveryPlanPanel extends JPanel {
@@ -31,6 +33,11 @@ public class DeliveryPlanPanel extends JPanel {
     private final DefaultTableModel routeModel;
     private final DefaultTableModel loadModel;
     private final JTextArea adviceArea = new JTextArea();
+    private final JButton fractionalBtn = new JButton("Fractional Knapsack");
+    private final JButton greedyBtn = new JButton("Greedy Algorithm");
+
+    private DeliveryPlan currentPlan;
+    private boolean showGreedy;
 
     public DeliveryPlanPanel(ReliefPlannerController controller) {
         this.controller = controller;
@@ -73,13 +80,24 @@ public class DeliveryPlanPanel extends JPanel {
         };
         JTable loadTable = new JTable(loadModel);
 
+        JPanel loadPanel = new JPanel(new BorderLayout(6, 6));
+        JPanel algoBar = new JPanel(new FlowLayout(FlowLayout.LEFT, 6, 4));
+        algoBar.setBorder(BorderFactory.createTitledBorder("Loading algorithm"));
+        fractionalBtn.addActionListener(e -> switchAlgorithm(false));
+        greedyBtn.addActionListener(e -> switchAlgorithm(true));
+        algoBar.add(fractionalBtn);
+        algoBar.add(greedyBtn);
+        loadPanel.add(algoBar, BorderLayout.NORTH);
+        loadPanel.add(new JScrollPane(loadTable), BorderLayout.CENTER);
+        updateAlgorithmButtons();
+
         adviceArea.setEditable(false);
         adviceArea.setLineWrap(true);
         adviceArea.setWrapStyleWord(true);
 
         JTabbedPane tabs = new JTabbedPane();
         tabs.addTab("Where to Send Help", new JScrollPane(routeTable));
-        tabs.addTab("What to Load on Truck", new JScrollPane(loadTable));
+        tabs.addTab("What to Load on Truck", loadPanel);
         tabs.addTab("Simple Advice", new JScrollPane(adviceArea));
         add(tabs, BorderLayout.CENTER);
     }
@@ -88,21 +106,11 @@ public class DeliveryPlanPanel extends JPanel {
         if (plan == null) {
             return;
         }
+        currentPlan = plan;
         summaryLabel.setText("Summary: " + plan.getReachableDestinations()
                 + " places can receive help, " + plan.getBlockedDestinations() + " places are blocked.");
         routeStats.setText(plan.getReachableDestinations() + " reachable | "
                 + plan.getBlockedDestinations() + " blocked");
-
-        KnapsackResult load = plan.getKnapsackResult();
-        if (load != null) {
-            loadStats.setText(String.format("%.1f kg loaded | Help score: %.1f",
-                    load.getTotalWeight(), load.getTotalScore()));
-            int pct = plan.getTruckCapacity() <= 0 ? 0
-                    : (int) Math.round(100.0 * load.getTotalWeight() / plan.getTruckCapacity());
-            truckBar.setValue(Math.min(100, pct));
-            truckBar.setString(String.format("%.1f / %.1f kg (%d%%)",
-                    load.getTotalWeight(), plan.getTruckCapacity(), pct));
-        }
 
         routeModel.setRowCount(0);
         for (DeliveryRoute r : plan.getRoutes()) {
@@ -129,6 +137,51 @@ public class DeliveryPlanPanel extends JPanel {
             });
         }
 
+        refreshLoadView();
+
+        adviceArea.setText("");
+        for (String line : plan.buildAdvice()) {
+            adviceArea.append(line + "\n");
+        }
+    }
+
+    private void switchAlgorithm(boolean greedy) {
+        showGreedy = greedy;
+        updateAlgorithmButtons();
+        refreshLoadView();
+    }
+
+    private void updateAlgorithmButtons() {
+        fractionalBtn.setEnabled(showGreedy);
+        greedyBtn.setEnabled(!showGreedy);
+    }
+
+    private void refreshLoadView() {
+        if (currentPlan == null) {
+            loadStats.setText(" ");
+            truckBar.setValue(0);
+            truckBar.setString("");
+            loadModel.setRowCount(0);
+            return;
+        }
+
+        KnapsackResult load = showGreedy ? currentPlan.getGreedyResult() : currentPlan.getKnapsackResult();
+        String algoLabel = showGreedy ? "Greedy (whole items)" : "Fractional knapsack";
+
+        if (load != null) {
+            loadStats.setText(String.format("%s: %.1f kg loaded | Help score: %.1f",
+                    algoLabel, load.getTotalWeight(), load.getTotalScore()));
+            int pct = currentPlan.getTruckCapacity() <= 0 ? 0
+                    : (int) Math.round(100.0 * load.getTotalWeight() / currentPlan.getTruckCapacity());
+            truckBar.setValue(Math.min(100, pct));
+            truckBar.setString(String.format("%.1f / %.1f kg (%d%%)",
+                    load.getTotalWeight(), currentPlan.getTruckCapacity(), pct));
+        } else {
+            loadStats.setText(algoLabel + ": no result");
+            truckBar.setValue(0);
+            truckBar.setString("");
+        }
+
         loadModel.setRowCount(0);
         if (load != null) {
             for (KnapsackLineItem line : load.getManifest()) {
@@ -142,11 +195,6 @@ public class DeliveryPlanPanel extends JPanel {
                         String.format("%.2f", line.getFraction())
                 });
             }
-        }
-
-        adviceArea.setText("");
-        for (String line : plan.buildAdvice()) {
-            adviceArea.append(line + "\n");
         }
     }
 

@@ -13,10 +13,13 @@ import javax.swing.JLabel;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
+import javax.swing.JSplitPane;
 import javax.swing.JTable;
 import javax.swing.JTextField;
 import javax.swing.table.DefaultTableModel;
+import javax.swing.SwingUtilities;
 import java.awt.BorderLayout;
+import java.awt.Dimension;
 import java.awt.FlowLayout;
 import java.awt.GridLayout;
 
@@ -42,11 +45,10 @@ public class MapRoadsPanel extends JPanel {
                 "Mark each location as Relief Hub (where supplies start) or Affected Area (where help is needed).");
         add(hint, BorderLayout.NORTH);
 
-        JPanel center = new JPanel(new BorderLayout(6, 6));
-        center.add(buildToolbar(), BorderLayout.NORTH);
-        center.add(graphPanel, BorderLayout.CENTER);
-        center.add(buildEditor(), BorderLayout.SOUTH);
-        add(center, BorderLayout.CENTER);
+        JPanel mapArea = new JPanel(new BorderLayout(6, 6));
+        mapArea.add(buildToolbar(), BorderLayout.NORTH);
+        mapArea.add(graphPanel, BorderLayout.CENTER);
+        mapArea.add(buildEditor(), BorderLayout.SOUTH);
 
         roadModel = new DefaultTableModel(
                 new String[]{"From Place", "To Place", "Time (min)", "Limit (kg)", "Flooded?"}, 0) {
@@ -64,19 +66,32 @@ public class MapRoadsPanel extends JPanel {
         roadTable.getColumn("Flooded?").setCellEditor(roadTable.getDefaultEditor(Boolean.class));
         roadTable.getColumn("Flooded?").setCellRenderer(roadTable.getDefaultRenderer(Boolean.class));
 
-        JPanel south = new JPanel(new BorderLayout());
-        south.add(new JScrollPane(roadTable), BorderLayout.CENTER);
+        JPanel roadsPanel = new JPanel(new BorderLayout(4, 4));
+        roadsPanel.setBorder(BorderFactory.createTitledBorder("Roads"));
+        JScrollPane roadScroll = new JScrollPane(roadTable);
+        roadScroll.setPreferredSize(new Dimension(0, 180));
+        roadsPanel.add(roadScroll, BorderLayout.CENTER);
         JButton removeRoad = new JButton("Remove Selected Road");
         removeRoad.addActionListener(e -> removeSelectedRoad());
-        south.add(removeRoad, BorderLayout.SOUTH);
-        add(south, BorderLayout.SOUTH);
+        roadsPanel.add(removeRoad, BorderLayout.SOUTH);
+
+        JSplitPane split = new JSplitPane(JSplitPane.VERTICAL_SPLIT, mapArea, roadsPanel);
+        split.setResizeWeight(0.72);
+        split.setOneTouchExpandable(true);
+        split.setContinuousLayout(true);
+        split.setDividerSize(6);
+        add(split, BorderLayout.CENTER);
 
         graphPanel.setGraphSupplier(controller::getGraph);
         graphPanel.setSelectionListener(this::showSelectedNode);
-        graphPanel.setGraphChangeListener(this::refreshRoadTable);
+        graphPanel.setGraphChangeListener(() -> {
+            controller.save();
+            refreshRoadTable();
+        });
 
         wireGraphPanel();
         refreshRoadTable();
+        SwingUtilities.invokeLater(() -> split.setDividerLocation(0.72));
     }
 
     private JPanel buildToolbar() {
@@ -96,6 +111,8 @@ public class MapRoadsPanel extends JPanel {
         });
         loadSample.addActionListener(e -> {
             controller.loadSample();
+            graphPanel.rearrangeCircular();
+            controller.save();
             graphPanel.refresh();
             refreshRoadTable();
             clearEditor();

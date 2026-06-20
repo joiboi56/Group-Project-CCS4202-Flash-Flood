@@ -7,6 +7,7 @@ public class DeliveryPlan {
 
     private final List<DeliveryRoute> routes = new ArrayList<>();
     private KnapsackResult knapsackResult;
+    private KnapsackResult greedyResult;
     private int reachableDestinations;
     private int blockedDestinations;
     private double dMax;
@@ -26,6 +27,14 @@ public class DeliveryPlan {
 
     public void setKnapsackResult(KnapsackResult knapsackResult) {
         this.knapsackResult = knapsackResult;
+    }
+
+    public KnapsackResult getGreedyResult() {
+        return greedyResult;
+    }
+
+    public void setGreedyResult(KnapsackResult greedyResult) {
+        this.greedyResult = greedyResult;
     }
 
     public int getReachableDestinations() {
@@ -69,8 +78,19 @@ public class DeliveryPlan {
             advice.add(blockedDestinations + " routes are blocked — try the other relief hub or wait for water to drop.");
         }
         if (knapsackResult != null) {
-            advice.add("Load " + String.format("%.1f", knapsackResult.getTotalWeight()) + " kg for best help score.");
+            advice.add("Fractional knapsack: load " + String.format("%.1f", knapsackResult.getTotalWeight())
+                    + " kg (help score " + String.format("%.1f", knapsackResult.getTotalScore()) + ").");
             for (KnapsackLineItem line : knapsackResult.getManifest()) {
+                if (line.getWeightLoaded() > 0) {
+                    advice.add("  • " + line.getItem().getName() + ": "
+                            + String.format("%.1f", line.getWeightLoaded()) + " kg");
+                }
+            }
+        }
+        if (greedyResult != null) {
+            advice.add("Greedy (whole items): load " + String.format("%.1f", greedyResult.getTotalWeight())
+                    + " kg (help score " + String.format("%.1f", greedyResult.getTotalScore()) + ").");
+            for (KnapsackLineItem line : greedyResult.getManifest()) {
                 if (line.getWeightLoaded() > 0) {
                     advice.add("  • " + line.getItem().getName() + ": "
                             + String.format("%.1f", line.getWeightLoaded()) + " kg");

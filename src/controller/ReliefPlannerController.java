@@ -2,6 +2,7 @@ package controller;
 
 import algorithm.DijkstraRouter;
 import algorithm.FractionalKnapsackOptimizer;
+import algorithm.GreedyKnapsackOptimizer;
 import database.FloodDatabase;
 import model.DeliveryPlan;
 import model.DeliveryRoute;
@@ -25,6 +26,7 @@ public class ReliefPlannerController {
     private final FloodDatabase database;
     private final DijkstraRouter router = new DijkstraRouter();
     private final FractionalKnapsackOptimizer knapsack = new FractionalKnapsackOptimizer();
+    private final GreedyKnapsackOptimizer greedyKnapsack = new GreedyKnapsackOptimizer();
     private DeliveryPlan lastPlan;
 
     public ReliefPlannerController(FloodDatabase database) {
@@ -97,8 +99,9 @@ public class ReliefPlannerController {
         plan.setReachableDestinations(reachable);
         plan.setBlockedDestinations(blocked);
 
-        KnapsackResult load = knapsack.optimize(database.getSupplyItems(), truckKg);
-        plan.setKnapsackResult(load);
+        List<SupplyItem> supplies = database.getSupplyItems();
+        plan.setKnapsackResult(knapsack.optimize(supplies, truckKg));
+        plan.setGreedyResult(greedyKnapsack.optimize(supplies, truckKg));
 
         lastPlan = plan;
         database.save();

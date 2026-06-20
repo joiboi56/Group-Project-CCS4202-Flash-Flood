@@ -39,8 +39,8 @@ public class MapGraphPanel extends JPanel {
 
     public MapGraphPanel() {
         setBackground(new Color(30, 34, 42));
-        setPreferredSize(new Dimension(700, 320));
-        setMinimumSize(new Dimension(500, 260));
+        setPreferredSize(new Dimension(700, 420));
+        setMinimumSize(new Dimension(400, 300));
 
         MouseAdapter mouse = new MouseAdapter() {
             @Override
@@ -126,8 +126,8 @@ public class MapGraphPanel extends JPanel {
         int i = 0;
         for (Node n : graph.getAllNodes()) {
             double angle = (2 * Math.PI * i) / count - Math.PI / 2;
-            n.setLayoutX(0.5 + 0.38 * Math.cos(angle));
-            n.setLayoutY(0.5 + 0.38 * Math.sin(angle));
+            n.setLayoutX(0.5 + 0.42 * Math.cos(angle));
+            n.setLayoutY(0.5 + 0.42 * Math.sin(angle));
             i++;
         }
         repaint();
@@ -245,7 +245,11 @@ public class MapGraphPanel extends JPanel {
             int my = (int) ((p1.getY() + p2.getY()) / 2);
             g2.setFont(new Font("SansSerif", Font.PLAIN, 11));
             g2.setColor(new Color(200, 205, 215));
-            g2.drawString((int) edge.getTravelMinutes() + "m", mx - 8, my - 4);
+            g2.drawString((int) edge.getTravelMinutes() + "m", mx - 8, my - 6);
+            if (edge.getFloodDepthMm() > 0) {
+                g2.setColor(new Color(160, 175, 195));
+                g2.drawString((int) edge.getFloodDepthMm() + "mm", mx - 12, my + 8);
+            }
         }
 
         for (Node node : graph.getAllNodes()) {
@@ -254,8 +258,7 @@ public class MapGraphPanel extends JPanel {
             int cy = (int) p.getY();
 
             boolean selected = node.getId().equals(selectedId);
-            Color fill = node.getPlaceType() == PlaceType.RELIEF_HUB
-                    ? new Color(45, 95, 70) : new Color(75, 55, 45);
+            Color fill = nodeFillColor(node);
             Color border = selected ? Color.WHITE : outlineColor(node);
             if (node.getPlaceType() == PlaceType.RELIEF_HUB) {
                 g2.setColor(new Color(230, 190, 40));
@@ -274,14 +277,29 @@ public class MapGraphPanel extends JPanel {
             FontMetrics fm = g2.getFontMetrics();
             String label = node.shortLabel();
             g2.drawString(label, cx - fm.stringWidth(label) / 2, cy + 4);
-
-            g2.setColor(new Color(180, 200, 220));
-            g2.setFont(new Font("SansSerif", Font.PLAIN, 10));
-            String depth = (int) node.getFloodDepthMm() + "mm";
-            g2.drawString(depth, cx + NODE_R + 4, cy + 4);
         }
 
         g2.dispose();
+    }
+
+    private Color nodeFillColor(Node node) {
+        if (node.getPlaceType() == PlaceType.RELIEF_HUB) {
+            return new Color(45, 110, 70);
+        }
+        double d = node.getFloodDepthMm();
+        if (d >= 450) {
+            return new Color(170, 55, 55);
+        }
+        if (d >= 400) {
+            return new Color(195, 95, 45);
+        }
+        if (d >= 300) {
+            return new Color(210, 165, 45);
+        }
+        if (d >= 200) {
+            return new Color(210, 205, 55);
+        }
+        return new Color(55, 120, 185);
     }
 
     private Color outlineColor(Node node) {
