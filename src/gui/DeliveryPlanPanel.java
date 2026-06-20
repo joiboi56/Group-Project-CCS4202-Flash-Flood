@@ -106,12 +106,26 @@ public class DeliveryPlanPanel extends JPanel {
 
         routeModel.setRowCount(0);
         for (DeliveryRoute r : plan.getRoutes()) {
+            String statusText;
+            String timeText;
+            String routeText = r.routeText();
+
+            if (r.canDeliver()) {
+                statusText = "CAN DELIVER";
+                timeText = ((int) r.getTravelMinutes()) + " min";
+            } else {
+                // NEW STATUS TEXT
+                statusText = "PENDING - WAITING FOR VEHICLE";
+                timeText = "-";
+                routeText = "Need boat. Waiting for rescue vehicle.";
+            }
+
             routeModel.addRow(new Object[]{
                     r.getHubName(),
                     r.getDestinationName(),
-                    r.canDeliver() ? "CAN DELIVER" : "BLOCKED",
-                    r.canDeliver() ? ((int) r.getTravelMinutes()) + " min" : "-",
-                    r.routeText()
+                    statusText,
+                    timeText,
+                    routeText
             });
         }
 
