@@ -79,7 +79,7 @@ public class FloodDatabase {
         addPlace("BALA", "Balakong", PlaceType.AFFECTED_AREA, 450, 0.85, 0.38);
         addPlace("TAMA", "Taman Connaught", PlaceType.AFFECTED_AREA, 280, 0.38, 0.52);
         addPlace("ONN", "Bandar Tun Hussein Onn", PlaceType.AFFECTED_AREA, 420, 0.82, 0.62);
-        addPlace("SEME", "Seri Kembangan", PlaceType.AFFECTED_AREA, 400, 0.58, 0.58);
+        addPlace("SEME", "Seri Kembangan", PlaceType.AFFECTED_AREA, 320, 0.58, 0.58);
         addPlace("PUCH", "Puchong", PlaceType.AFFECTED_AREA, 500, 0.22, 0.72);
         addPlace("CHER", "Cheras", PlaceType.AFFECTED_AREA, 400, 0.30, 0.45);
         addPlace("SEMPA", "Semenyih", PlaceType.AFFECTED_AREA, 410, 0.88, 0.30);
@@ -94,7 +94,7 @@ public class FloodDatabase {
         addRoad("UPM", "BAND", 15, 500, false);
         addRoad("UPM", "KAJA", 10, 500, false);
         addRoad("UPM", "CHER", 12, 500, false);
-        addRoad("UPM", "PUTRA", 8, 500, false);
+        addRoad("UPM", "PUTRA", 8, 500, true);
         addRoad("RAYA", "BAND", 8, 400, false);
         addRoad("RAYA", "KAJA", 12, 500, false);
         addRoad("BAND", "KAJA", 5, 500, false);
@@ -138,9 +138,13 @@ public class FloodDatabase {
         if (graph.findEdge(from, to) != null) {
             return;
         }
-        graph.addEdge(new Edge(from, to, minutes, limitKg, flooded));
-    }
+        // NEW LOGIC: Calculate average depth
+        Node nodeFrom = graph.getNode(from);
+        Node nodeTo = graph.getNode(to);
+        double avgFloodDepth = (nodeFrom.getFloodDepthMm() + nodeTo.getFloodDepthMm()) / 2.0;
 
+        graph.addEdge(new Edge(from, to, minutes, limitKg, flooded, avgFloodDepth)); // <--- Pass depth
+    }
     public void addSupplyItem(String name, double weight, double priority, double available) {
         String id = "item" + (supplyItems.size() + 1);
         supplyItems.add(new SupplyItem(id, name, weight, priority, available));
@@ -161,9 +165,9 @@ public class FloodDatabase {
                         n.getFloodDepthMm(), n.getLayoutX(), n.getLayoutY());
             }
             for (Edge e : graph.getEdges()) {
-                pw.printf("EDGE,%s,%s,%.2f,%.2f,%s%n",
+                pw.printf("EDGE,%s,%s,%.2f,%.2f,%s,%.2f%n", // <--- Added extra placeholder for depth
                         e.getFrom(), e.getTo(), e.getTravelMinutes(),
-                        e.getWeightLimitKg(), e.isFlooded());
+                        e.getWeightLimitKg(), e.isFlooded(), e.getFloodDepthMm()); // <--- Added depth
             }
             for (SupplyItem s : supplyItems) {
                 pw.printf("ITEM,%s,%s,%.2f,%.2f,%.2f%n",
@@ -247,12 +251,15 @@ public class FloodDatabase {
         double minutes = Double.parseDouble(p[3]);
         double limit = p.length > 4 ? Double.parseDouble(p[4]) : 500;
         boolean flooded = p.length > 5 && Boolean.parseBoolean(p[5]);
+        double floodDepth = p.length > 6 ? Double.parseDouble(p[6]) : 0.0; // <--- NEW LINE
+
         if (e != null) {
             e.setTravelMinutes(minutes);
             e.setWeightLimitKg(limit);
             e.setFlooded(flooded);
+            e.setFloodDepthMm(floodDepth); // <--- NEW LINE
         } else if (graph.getNode(p[1]) != null && graph.getNode(p[2]) != null) {
-            graph.addEdge(new Edge(p[1], p[2], minutes, limit, flooded));
+            graph.addEdge(new Edge(p[1], p[2], minutes, limit, flooded, floodDepth)); // <--- Pass depth
         }
     }
 
