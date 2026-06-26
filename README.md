@@ -34,8 +34,18 @@ Flash floods are among the most dangerous natural disasters. Without early warni
 - Add Road > Can connect between 2 places, also can add the flood depth and expected travel time
 - Re-arrange Map >
 - Load Selangor Sample >
+-Additional info: The table below show the route based on the map,estimated travel time, limit supply that can be carried on and check box to determine whether the road is flooded or not
 
 2) Supplies
+![Flash Flood Relief Banner](image/UI(2).png)
+- This UI shows the list of supplies,its weight,priority score and available stock
+- There is also feature to add and remove item at bottom left
+
+3) Delivery Plan
+![Flash Flood Relief Banner](image/UI(3).png)
+-This UI shows information about delivery plan
+-It is mainly to show the information about the transportation of supply from UPM (main base) and UNITEN (sub base) to the affected area
+   
   
 ## Algorithms
 - **Dijkstra** — shortest safe route from each relief hub to affected areas (respects flood depth Dmax, flooded roads, road weight limits)
