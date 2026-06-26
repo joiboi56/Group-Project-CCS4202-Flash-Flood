@@ -27,8 +27,8 @@ Flash floods are among the most dangerous natural disasters. Without early warni
 -Implementing Fractional Knapsack Algorithm to choose the best combination of supplies that can be split into smaller parts because we want to used a truck capacity as fully as possible.
 
 ## Core Features
-![Flash Flood Relief Banner](image/UI(1).png)
 1) Map and Roads
+![Flash Flood Relief Banner](image/UI(1).png)
 - Add Place > Can be used to add new place in the map to deliver the emergency supplies
 - Delete Selected > Can delete the selected place in the map
 - Add Road > Can connect between 2 places, also can add the flood depth and expected travel time
