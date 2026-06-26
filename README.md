@@ -1,8 +1,41 @@
 ![Flash Flood Relief Banner](image/Project%20banner.png)
-# Flash Flood Relief Planner - CCS4202 Group Project
+# Flash Flood Relief Logistic Optimization in Selangor - CCS4202 Group Project
 
-Java Swing desktop app for Selangor flash flood relief planning.
+![Java](https://img.shields.io/badge/Language-Java%2021-ED8B00?style=for-the-badge&logo=openjdk&logoColor=white)
+![Status](https://img.shields.io/badge/Status-Completed-28A745?style=for-the-badge)
 
+Managing flood risk information across multiple zones can be overwhelming. Flash Flood Tracker brings clarity to real-time flood data with organized dashboards and automated alerts. There is also a feature that analyze the best combination of supply based on its weight and value that need to be transported to affected victims. It is a time saving since during disaster time, many unexpected events can be happen.
+
+## Table of Contents
+
+- [Problem Statement](#problem-statement)
+- [Our Solution](#our-solution)
+- [Core Features](#core-features)
+- [Architecture](#architecture)
+- [Tech Stack](#tech-stack)
+- [How to Install and Run](#how-to-install-and-run)
+- [Team](#team)
+
+## Problem Statement
+
+Flash floods are among the most dangerous natural disasters. Without early warning systems, communities cannot respond fast enough to protect lives and property. Then, our group, AZIS invented a project to help solve this issue. We build a computer system that turns the disaster areas into a graph that consist of node that represent places and edges represent roads. We apply 3 algorithm to solve the problems at the same time. This system was trained to find a shortest route  to each location and choosing the best combination of supplies to load into a rescue truck without exceeding the weight limit. Model-View-Contoller(MVC) structure is applied in the system, so the logic part and interface part are being split and more manageable. 
+
+## Our Solution
+
+-Convert a disaster area as a directed weighted graph, where the nodes are locations and edges are roads with travel time as weight.
+-Use Dijkstra’s Algorithm to find the shortest distance and safest route from base area to affected areas, if a certain road is block, the Dijkstra’s Algorithm will find another shortest and safest route.
+-Implementing Fractional Knapsack Algorithm to choose the best combination of supplies that can be split into smaller parts because we want to used a truck capacity as fully as possible.
+
+## Core Features
+1) Map and Roads
+- Add Place > Can be used to add new place in the map to deliver the emergency supplies
+- Delete Selected > Can delete the selected place in the map
+- Add Road > Can connect between 2 places, also can add the flood depth and expected travel time
+- Re-arrange Map >
+- Load Selangor Sample >
+
+2) Supplies
+  
 ## Algorithms
 - **Dijkstra** — shortest safe route from each relief hub to affected areas (respects flood depth Dmax, flooded roads, road weight limits)
 - **Fractional Knapsack** — optimal truck loading by priority/weight ratio
