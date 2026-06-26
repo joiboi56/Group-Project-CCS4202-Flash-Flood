@@ -43,8 +43,8 @@ Flash floods are among the most dangerous natural disasters. Without early warni
 
 3) Delivery Plan
 ![Flash Flood Relief Banner](image/UI(3).png)
--This UI shows information about delivery plan
--It is mainly to show the information about the transportation of supply from UPM (main base) and UNITEN (sub base) to the affected area
+- This UI shows information about delivery plan
+- It is mainly to show the information about the transportation of supply from UPM (main base) and UNITEN (sub base) to the affected area
    
   
 ## Algorithms
