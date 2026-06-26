@@ -1,2 +1,10 @@
 .DS_Store
 .idea/
+# IntelliJ IDEA
+.idea/
+*.iml
+
+# Compiled class files
+out/
+build/
+*.class
