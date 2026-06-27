@@ -25,9 +25,9 @@ Flash floods are among the most dangerous natural disasters. Without early warni
 
 ## Our Solution
 
--Convert a disaster area as a directed weighted graph, where the nodes are locations and edges are roads with travel time as weight.
--Use Dijkstra’s Algorithm to find the shortest distance and safest route from base area to affected areas, if a certain road is block, the Dijkstra’s Algorithm will find another shortest and safest route.
--Implementing Fractional Knapsack Algorithm to choose the best combination of supplies that can be split into smaller parts because we want to used a truck capacity as fully as possible.
+- Convert a disaster area as a directed weighted graph, where the nodes are locations and edges are roads with travel time as weight.
+- Use Dijkstra’s Algorithm to find the shortest distance and safest route from base area to affected areas, if a certain road is block, the Dijkstra’s Algorithm will find another shortest and safest route.
+- Implementing Fractional Knapsack Algorithm to choose the best combination of supplies that can be split into smaller parts because we want to used a truck capacity as fully as possible.
 
 
 ## Core Features
