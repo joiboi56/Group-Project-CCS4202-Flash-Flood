@@ -1,4 +1,4 @@
-package gui;
+package model;
 
 import controller.ReliefPlannerController;
 import database.FloodDatabase;

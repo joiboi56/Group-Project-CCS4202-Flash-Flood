@@ -9,10 +9,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-/**
- * Greedy 0/1 knapsack: items sorted by priority/weight ratio; each item is
- * taken whole or skipped (no fractional loading).
- */
+
 public class GreedyKnapsackOptimizer {
 
     public KnapsackResult optimize(List<SupplyItem> items, double capacityW) {

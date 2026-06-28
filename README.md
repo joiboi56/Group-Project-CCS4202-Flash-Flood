@@ -78,7 +78,6 @@ Group-Project-CCS4202-Flash-Flood/
 ├── flood_data.txt                           # Persistent data file (auto-generated)
 ├── src/
 │   ├── gui/
-│   │   ├── Main.java                        # Entry point — wires DB, controller, and window
 │   │   ├── MainFrame.java                   # Root Swing window with tabbed navigation
 │   │   ├── MapGraphPanel.java               # Interactive map canvas (nodes + edges)
 │   │   ├── MapRoadsPanel.java               # Road/edge management panel
@@ -97,6 +96,7 @@ Group-Project-CCS4202-Flash-Flood/
 │   │   └── FloodDatabase.java               # Graph + supply store; file I/O
 │   │
 │   └── model/
+│       ├── Main.java                        # Entry point — wires DB, controller, and window
 │       ├── Graph.java                       # Adjacency-list graph
 │       ├── Node.java                        # Location (hub or affected area)
 │       ├── Edge.java                        # Road with travel time, weight limit, flood depth
@@ -132,13 +132,13 @@ File → Open → select the project folder
 3. Set the SDK if prompted:
 File → Project Structure → Project SDK → choose JDK 11+
 4. Run the application:
-- Navigate to src/gui/Main.java
-- Click the green ▶️ Run button next to the main method
+- Navigate to src/model/Main.java
+- Click the green Run button next to the main method
 Or right-click the file → Run 'Main.main()'
 
 **Option 2 — Run from the Command Line**
 1. Compile all source files from the project root: javac -d out/production/Group-Project-CCS4202-Flash-Flood src/**/*.java (On Windows CMD, replace src/**/*.java with explicit paths or use a wildcard-compatible shell)
-2. Run the compiled application: java -cp out/production/Group-Project-CCS4202-Flash-Flood gui.Main
+2. Run the compiled application: java -cp out/production/Group-Project-CCS4202-Flash-Flood model.Main
 3. First Launch Behaviour
 
 On first run, the app automatically loads a Selangor sample dataset with:
