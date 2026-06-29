@@ -1,25 +1,24 @@
 package model;
 
-/**
- * One planned delivery trip: from a relief hub to an affected area.
- * Example: UPM -> SK Sri Serdang. The controller runs Dijkstra for each request.
- */
+
 public class DeliveryRequest {
 
-    private final String hubId;          // starting base, e.g. "UPM"
-    private final String destinationId;  // target place, e.g. "SKSS"
-
+    //store starting base id
+    private final String hubId; 
+    //store destination id         
+    private final String destinationId;  
+    //like fill a form, need to fill this info
     public DeliveryRequest(String hubId, String destinationId) {
         this.hubId = hubId;
         this.destinationId = destinationId;
     }
 
-    /** ID of the relief hub where the truck leaves from. */
+    //can know where the truck leaves from
     public String getHubId() {
         return hubId;
     }
 
-    /** ID of the affected area that needs supplies. */
+    // can know the truck destination
     public String getDestinationId() {
         return destinationId;
     }
