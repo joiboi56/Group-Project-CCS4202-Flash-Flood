@@ -1,5 +1,6 @@
 package controller;
 
+//import the algorithm classes and model classes
 import algorithm.DijkstraRouter;
 import algorithm.FractionalKnapsackOptimizer;
 import algorithm.GreedyKnapsackOptimizer;
@@ -15,29 +16,35 @@ import model.PlaceType;
 import model.RouteResult;
 import model.SupplyItem;
 
+// for dynamic list
 import java.util.ArrayList;
+//utility methods
 import java.util.Collections;
+//interface
 import java.util.List;
 
-/**
- * CONTROLLER PACKAGE — middle layer in MVC (Model-View-Controller).
- *
- * The GUI (View) never talks to algorithms directly. It calls this class instead.
- * This class reads data from FloodDatabase (Model), runs the algorithms, and
- * returns a DeliveryPlan for the GUI to display.
- */
+// controller act as a middle layer in MVC
+//The gui talk with model using contoller as a middle layer
 public class ReliefPlannerController {
 
+    //store the database object
     private final FloodDatabase database;
+    //create the routing algorithm
     private final DijkstraRouter router = new DijkstraRouter();
+    //create the Fractional knapsack Optimizer object
     private final FractionalKnapsackOptimizer knapsack = new FractionalKnapsackOptimizer();
+    //create a greedy optimizer  object
     private final GreedyKnapsackOptimizer greedyKnapsack = new GreedyKnapsackOptimizer();
+    //Array to store all delivery requests entered by the user
     private final List<DeliveryRequest> deliveryRequests = new ArrayList<>();
-    private DeliveryPlan lastPlan; // cached result from last Calculate click
+    // stores the most recent calculated plan
+    private DeliveryPlan lastPlan;
 
-    /** Sets up database and loads the default delivery list. */
+
     public ReliefPlannerController(FloodDatabase database) {
+        //stores the database references
         this.database = database;
+        //function that can loads the default six delivery request
         resetDeliveryRequestsToSample();
     }
 
@@ -59,42 +66,50 @@ public class ReliefPlannerController {
         return lastPlan;
     }
 
-    /** Read-only list of hub-to-destination trips the user configured. */
+   //Returns the delivery list
     public List<DeliveryRequest> getDeliveryRequests() {
+
+        //Gui can read the value but cannot mofified it directly
         return Collections.unmodifiableList(deliveryRequests);
     }
 
-    /**
-     * Adds one delivery trip to the plan (e.g. UPM -> SK Sri Serdang).
-     * Ignores duplicates and invalid pairs.
-     */
+    //method for create or add a new delivery request
     public void addDeliveryRequest(String hubId, String destinationId) {
+        // the input must be valid(cannot null or same input)
         if (hubId == null || destinationId == null || hubId.equals(destinationId)) {
             return;
         }
+
+        //check every existing delivery request
         for (DeliveryRequest request : deliveryRequests) {
+
+            //check is there is a duplication
             if (request.getHubId().equals(hubId) && request.getDestinationId().equals(destinationId)) {
                 return;
             }
         }
+        //add new delivery request
         deliveryRequests.add(new DeliveryRequest(hubId, destinationId));
-        lastPlan = null; // old results no longer valid
+        // old results no longer valid
+        lastPlan = null;
     }
 
-    /** Removes one delivery row by index from the Delivery Plan tab. */
+    //method to remove a delivery request
     public void removeDeliveryRequest(int index) {
+        //make sure all the delivery request index exist
         if (index >= 0 && index < deliveryRequests.size()) {
+            //deletes it
             deliveryRequests.remove(index);
             lastPlan = null;
         }
     }
 
-    /**
-     * Restores the 6 default routes from our NADMA Sector 4 scenario:
-     * 4 from UPM, 2 from UNITEN.
-     */
+   //reset all the delivery request and set to default sample
     public void resetDeliveryRequestsToSample() {
+        //clear/remove all requests
         deliveryRequests.clear();
+
+        //add six sample routes
         deliveryRequests.add(new DeliveryRequest("UPM", "SKSS"));
         deliveryRequests.add(new DeliveryRequest("UPM", "SMKSS"));
         deliveryRequests.add(new DeliveryRequest("UPM", "U360"));
@@ -104,35 +119,40 @@ public class ReliefPlannerController {
         lastPlan = null;
     }
 
-    /**
-     * MAIN PLANNING METHOD — runs when user clicks "Calculate Delivery Plan".
-     *
-     * Step 1: For each delivery request, run Dijkstra to find shortest safe route.
-     * Step 2: Run Fractional Knapsack and Greedy Knapsack on the supply list.
-     * Step 3: Package everything into a DeliveryPlan and save data to file.
-     */
+   //create a calculating method
     public DeliveryPlan calculateDeliveryPlan() {
+
+        //get the maximum safe flood depth
         double dMax = database.getDMaxMm();
+        //get the maximum truck capacity
         double truckKg = database.getTruckCapacityKg();
+        //get the road networks
         Graph graph = database.getGraph();
 
+        //create a new plan
         DeliveryPlan plan = new DeliveryPlan();
+        //stores all setting
         plan.setDMax(dMax);
         plan.setTruckCapacity(truckKg);
 
+        // to count the reachable and blocked hub
         int reachable = 0;
         int blocked = 0;
 
-        // --- ROUTING: Dijkstra for each hub -> destination pair ---
+        // the loop function is to process every delivery request
         for (DeliveryRequest request : deliveryRequests) {
+
+            //get the starting hub(UPM)
             Node hub = graph.getNode(request.getHubId());
+            //get the destination(affected areas)
             Node dest = graph.getNode(request.getDestinationId());
             // Must start at hub and end at affected area
-            if (hub == null || dest == null || !hub.isHub()
-                    || dest.getPlaceType() != PlaceType.AFFECTED_AREA) {
+            if (hub == null || dest == null || !hub.isHub() || dest.getPlaceType() != PlaceType.AFFECTED_AREA) {
                 continue;
             }
+            //runs the Dijkstra's algorithm
             RouteResult result = router.computeShortestPaths(graph, hub.getId(), dMax, truckKg);
+            //get route information(reachable or blocked)
             NodeRouteInfo info = result.get(dest.getId());
             boolean ok = info != null && info.isReachable();
             if (ok) {
@@ -148,38 +168,39 @@ public class ReliefPlannerController {
                     pathNames.add(step != null ? step.getName() : stepId);
                 }
             }
+            //get the estimated travel time
             double eta = info != null ? info.getEta() : Double.POSITIVE_INFINITY;
-            plan.addRoute(new DeliveryRoute(
-                    hub.getName(),
-                    dest.getName(),
-                    ok,
-                    eta,
-                    pathNames
-            ));
+            //stores one complete route
+            plan.addRoute(new DeliveryRoute(hub.getName(),dest.getName(), ok, eta, pathNames));
         }
-
+        //stores the reacable count and blocked count
         plan.setReachableDestinations(reachable);
         plan.setBlockedDestinations(blocked);
 
-        // --- LOADING: both knapsack algorithms for comparison ---
+        //  Load Optimization: both knapsack algorithms for comparison
+        //get all the supply items
         List<SupplyItem> supplies = database.getSupplyItems();
+        //runs the fractional knapsack
         plan.setKnapsackResult(knapsack.optimize(supplies, truckKg));
+        //runs greedy algorithm(0/1 knapsack)
         plan.setGreedyResult(greedyKnapsack.optimize(supplies, truckKg));
 
+        //saved the last plan
         lastPlan = plan;
+        //save the database
         database.save();
+        //return the completed delivery plan
         return plan;
     }
 
-    /** Resets map and supplies to Selangor sample — "Load Selangor Sample" button. */
+    // load the sample dataset
     public void loadSample() {
         database.loadSelangorSample();
         resetDeliveryRequestsToSample();
         database.save();
         lastPlan = null;
     }
-
-    /** Tells database to write flood_data.txt (called after map/supply edits). */
+    //save the current state to database
     public void save() {
         database.save();
     }
