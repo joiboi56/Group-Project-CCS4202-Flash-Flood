@@ -17,40 +17,34 @@ import java.util.Map;
 import java.util.PriorityQueue;
 import java.util.Set;
 
-/**
- * Finds the shortest safe driving route during a flood.
- * We use Dijkstra's Algorithm from CCS4202 — it picks the fastest path
- * while skipping roads that are too flooded or too dangerous for the truck.
- */
+//Finds the shortest safe driving route during a flood.
+//We use Dijkstra's Algorithm to choose tye shortest and safest path
+
 public class DijkstraRouter {
 
-    // Rescue teams should reach victims within 3 hours (180 minutes) if possible
-    private static final double MAX_ACCEPTABLE_TIME = 180.0;
+    // Rescue teams should reach victims within 3 hours  if possible
+    private static final double MAX_ACCEPTABLE_TIME = 60.0;
 
-    // Roads at 700mm or deeper are treated as fully blocked (truck cannot pass)
+    // Roads at 700mm or deeper are treated as fully blocked
     private static final double BLOCKED_FLOOD_DEPTH_MM = 700.0;
 
-    /**
-     * Main routing function — works out the shortest safe path from one relief hub
-     * to every other place on the map.
-     *
-     * In simple terms: imagine UPM is the starting point and we want the fastest
-     * route to each school or station, but only using roads that are still passable.
-     *
-     * @param graph          the map (places + roads) stored as a graph
-     * @param sourceId       where the truck starts, e.g. "UPM" or "UNIT"
-     * @param dMax           max flood depth (mm) the vehicle can handle at a location
-     * @param truckWeightKg  how heavy the loaded truck is — some bridges have weight limits
-     */
+    //Main routing function  works out the shortest safe path from one relief hub to every other place on the map.
+    //the parameter graph(map =places+roads), sourceId(where the truck start), dMax(max flood depth(mm)), truckWeightKg(the truck weight)
     public RouteResult computeShortestPaths(Graph graph, String sourceId, double dMax, double truckWeightKg) {
-        // dist = shortest travel time found so far to each place
+
+        // the initial plan that show the shortest time to go at each places
         Map<String, Double> dist = new HashMap<>();
-        // prev = which place we came from — used later to rebuild the route
+        // save the previous visited place to rebuild the route
         Map<String, String> prev = new HashMap<>();
+
+        //Go through all the place on the map e
         for (Node n : graph.getAllNodes()) {
+
+            //every place start with positive infinity since it haven't travelled there and no one knows the previous place
             dist.put(n.getId(), Double.POSITIVE_INFINITY);
             prev.put(n.getId(), null);
         }
+        // The starting place start 0
         dist.put(sourceId, 0.0);
 
         // Priority queue always picks the place with the smallest travel time next
@@ -58,8 +52,12 @@ public class DijkstraRouter {
         pq.add(sourceId);
         Set<String> visited = new HashSet<>();
 
+        // Keep searching untill no more places left
         while (!pq.isEmpty()) {
+
+            //always finding the nearest place
             String u = pq.poll();
+            //Skip the place that already being visited
             if (visited.contains(u)) continue;
             visited.add(u);
 
@@ -76,16 +74,20 @@ public class DijkstraRouter {
                 // Skip flooded roads or roads where water is too deep
                 if (edge.isFlooded() || edge.getFloodDepthMm() >= BLOCKED_FLOOD_DEPTH_MM) continue;
 
+                // get a travel time and also include teh up travel time
                 double edgeTravelTime = edge.getTravelMinutes();
                 double candidate = dist.get(u) + edgeTravelTime;
 
-                // Do not suggest routes that take more than 3 hours
+                // Do not suggest routes that take more than 1 hours
                 if (candidate > MAX_ACCEPTABLE_TIME) continue;
 
-                // Found a faster way to reach v — update and queue it
+                // Found a faster way to reach v (update and queue it)
                 if (candidate < dist.get(v)) {
+                    //update the new shortest time
                     dist.put(v, candidate);
+                    //remember the previous place
                     prev.put(v, u);
+                    //add the place into the queue
                     pq.add(v);
                 }
             }
@@ -96,7 +98,7 @@ public class DijkstraRouter {
         for (Node n : graph.getAllNodes()) {
             String id = n.getId();
             double eta = dist.get(id);
-            // Reachable only if we found a path AND the destination is not underwater (>= Dmax)
+            // Reachable only if we found a path and the destination is not abve Dmax
             boolean reachable = !Double.isInfinite(eta) && !n.isDisabled(dMax);
             List<String> path = reachable ? buildPath(prev, sourceId, id) : Collections.emptyList();
             if (reachable && path.isEmpty()) reachable = false;
@@ -106,18 +108,21 @@ public class DijkstraRouter {
         return new RouteResult(sourceId, dMax, results);
     }
 
-    /**
-     * Traces back from the destination to the start using the prev map.
-     * Example output path: [UPM, U360, SKSS] meaning UPM -> Univ 360 -> SK Sri Serdang
-     */
+
     private List<String> buildPath(Map<String, String> prev, String source, String target) {
         LinkedList<String> path = new LinkedList<>();
+        //the current string is the target location(destination)
         String current = target;
+        //saved at path if its not a null value
         while (current != null) {
+            //insert the current node at the beginning of the list
             path.addFirst(current);
+            // if the current node  reach the main base(UPM) then break
             if (current.equals(source)) break;
             current = prev.get(current);
         }
+
+        // if the first path does nit equal to the main base(UPM), then it means no valid path
         if (path.isEmpty() || !path.getFirst().equals(source)) return Collections.emptyList();
         return path;
     }
