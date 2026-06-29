@@ -44,13 +44,22 @@ public class FractionalKnapsackOptimizer {
         //Go through all the sorted items by density
         for (SupplyItem item : sorted) {
             double maxFromStock = stockLeft.getOrDefault(item.getId(), 0.0);
+
+            // skip the item if the truck already full
             if (remainingCapacity <= 0 || maxFromStock <= 0) {
+
+                // record that no quantity of the item was selected
                 manifest.add(new KnapsackLineItem(item, 0.0, 0.0, 0.0));
                 continue;
             }
 
+            //retrieve the weight of one unit of the current item
             double unitWeight = item.getWeightPerUnit();
+
+            //ignore items with invalid or zero weight
             if (unitWeight <= 0) {
+
+                //record the item that was not selected
                 manifest.add(new KnapsackLineItem(item, 0.0, 0.0, 0.0));
                 continue;
             }
@@ -61,13 +70,19 @@ public class FractionalKnapsackOptimizer {
             double fraction = weightLoaded / unitWeight;
             double scoreAdded = fraction * item.getPriorityScore();
 
+            // record the seletcted items, amount loaded, help score, and fraction of the available stocked used
             manifest.add(new KnapsackLineItem(item, weightLoaded, scoreAdded, fraction));
+
+            //Add the items help score
             totalScore += scoreAdded;
+            // Reduced the truck capacity with the loaded weight
             remainingCapacity -= weightLoaded;
+            // Update the left stock after loading the item
             stockLeft.put(item.getId(), maxFromStock - weightLoaded);
         }
-
+        //Calculate the total weight loaded into the vehicle
         double totalWeight = capacityW - remainingCapacity;
+        //Return all the values
         return new KnapsackResult(manifest, totalWeight, totalScore, capacityW);
     }
 }

@@ -26,9 +26,9 @@ EDGE,U360,KTMB,5.00,500.00,false,300.00
 EDGE,KTMB,SKSS,7.00,500.00,false,260.00
 EDGE,KTMB,SMKSS,4.00,500.00,false,340.00
 EDGE,KTMB,U360,5.00,500.00,false,420.00
-ITEM,medical,Medical Kit,20.00,10.00,60.00
+ITEM,medical,Medical Kit,20.00,10.00,100.00
 ITEM,water,Clean Water,10.00,8.00,100.00
-ITEM,formula,Infant Formula,5.00,9.00,40.00
-ITEM,rice,Rice Ration,15.00,7.00,200.00
-ITEM,torch,Torch+Battery,2.00,6.00,50.00
-ITEM,blanket,Blanket,3.00,5.00,80.00
+ITEM,formula,Infant Formula,5.00,9.00,100.00
+ITEM,rice,Rice Ration,15.00,7.00,100.00
+ITEM,torch,Torch+Battery,2.00,6.00,100.00
+ITEM,blanket,Blanket,3.00,6.00,100.00
