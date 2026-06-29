@@ -11,6 +11,9 @@ Managing flood risk information across multiple zones can be overwhelming. Flash
 
 - [Problem Statement](#problem-statement)
 - [Our Solution](#our-solution)
+- [Algorithm Paradigm](#algorithm-paradigm)
+- [Pseudocode](#pseudocode)
+- [Algorithm Analysis](#algorithm-analysis)
 - [Core Features](#core-features)
 - [Architecture](#architecture)
 - [Tech Stack](#tech-stack)
@@ -20,7 +23,10 @@ Managing flood risk information across multiple zones can be overwhelming. Flash
 
 ## Problem Statement
 
-Flash floods are among the most dangerous natural disasters. Without early warning systems, communities cannot respond fast enough to protect lives and property. Then, our group, AZIS invented a project to help solve this issue. We build a computer system that turns the disaster areas into a graph that consist of node that represent places and edges represent roads. We apply 3 algorithm to solve the problems at the same time. This system was trained to find a shortest route  to each location and choosing the best combination of supplies to load into a rescue truck without exceeding the weight limit. Model-View-Contoller(MVC) structure is applied in the system, so the logic part and interface part are being split and more manageable. 
+![Flash Flood Relief Banner](image/img.png)
+- Heavy rain causes flash flooding that can blocks roads and cuts off several location, so we need to reroute the path until it arrived at the affected areas.
+- Calculating route and supply loading by hand is slow and not accurate, each affected areas have different conditions. Thus, we need to combine all the item using help score (which item is more important) and make sure it utilizing all the truck capacity.
+- There is a 72 -hour survival window in disaster relief, the chance of survival drop drastically as time goes by. Thus, decision must be make quickly.
 
 
 ## Our Solution
@@ -29,6 +35,103 @@ Flash floods are among the most dangerous natural disasters. Without early warni
 - Use Dijkstra’s Algorithm to find the shortest distance and safest route from base area to affected areas, if a certain road is block, the Dijkstra’s Algorithm will find another shortest and safest route.
 - Implementing Fractional Knapsack Algorithm to choose the best combination of supplies that can be split into smaller parts because we want to used a truck capacity as fully as possible.
 
+## Algorithm Paradigm
+- Graph Modeling: Convert the disaster area into a directed weighted graph, where the nodes represent locations and the edges represent roads with travel time as the weight.
+
+- Shortest Path (Greedy): Use Dijkstra’s Algorithm, which utilizes a greedy paradigm to find the shortest and safest route from the base area to affected areas by consistently selecting the next closest accessible intersection. If a road is blocked, the algorithm will dynamically recalculate the next optimal path.
+
+- Resource Allocation (Greedy): Implement the Fractional Knapsack Algorithm to optimize truck capacity. Using a greedy approach, it calculates the highest priority-to-weight ratio of splittable supplies and loads the most valuable items first to ensure the truck's capacity is utilized as fully and efficiently as possible.
+
+## Pseudocode
+Given the three algorithms in the form of pseudocode used in this project which are Dijkstra’s Algorithm to find the shortest path, the Fractional Knapsack Algorithm and the discrete Greedy Knapsack Algorithm that is used for loading supplies.
+**Dijkstra’s Algorithm (Shortest Route)**
+
+DIJKSTRA(graph, sourceId, dMax, truckWeightKg):
+    for each node n in graph:
+        dist[n] = ∞
+        prev[n] = null
+    dist[sourceId] = 0
+    priorityQueue = {sourceId}
+
+    While priorityQueue not empty:
+        u = extractMin(priorityQueue)
+        If u already visited: continue
+        mark u visited
+
+        for each outgoing edge (u → v):
+            If truckWeightKg > edge.weightLimit: continue
+            If edge.flooded OR edge.floodDepthMm >= 700: continue
+
+            candidate = dist[u] + edge.travelMinutes
+            if candidate > 180 minutes: continue
+
+            if candidate < dist[v]:
+                dist[v] = candidate
+                prev[v] = u
+                Insert v into priorityQueue
+
+    for each node n:
+        reachable = dist[n] < ∞ AND n.floodDepth < dMax
+        path = reconstruct(prev, sourceId, n)
+        Store (ETA, path, reachable)
+
+return results
+
+Comparison Case of Load Score Maximization
+**Fractional Knapsack Algorithm**
+
+FRACTIONAL_KNAPSACK(items, capacityW):
+    sorted = items sorted by (priorityScore / weightPerUnit) descending
+    remaining = capacityW
+    totalScore = 0
+
+    for each item in sorted:
+        weightLoaded = min(remaining, item.availableKg)
+        fraction = weightLoaded / item.weightPerUnit
+        scoreAdded = fraction x item.priorityScore
+        add (item, weightLoaded, scoreAdded) to manifest
+        totalScore += scoreAdded
+        remaining -= weightLoaded
+
+    return (manifest, capacityW - remaining, totalScore)
+
+**Discrete Greedy Knapsack Algorithm**
+GREEDY_KNAPSACK(items, capacityW):
+    sorted = items sorted by density descending
+    remaining = capacityW
+    totalScore = 0
+
+    for each item in sorted:
+        while unitWeight <= remaining AND stock >= unitWeight:
+            load one whole unit
+            remaining -= unitWeight
+            totalScore += item.priorityScore
+        add loaded units to manifest
+
+    return (manifest, capacityW - remaining, totalScore)
+
+## Algorithm Analysis
+Correctness design proof
+
+**Dijkstra’s Algorithm**
+
+For each step, the unvisited node with the tiny tentative distance is finalized due to every 
+edge weights are positive and no next path through an unvisited node is able to improve a finalized distance. After filtering flooded edges more than equal 700 mm and disabled nodes more than equal Dmax, the returned path is the shortest among safe routes only that consistent with flood evacuation routing approaches in prior research.
+
+**Fractional Knapsack**
+Firstly, if an optimal solution did not take the highest density item, swapping a small 
+amount of lower density cargo for higher density cargo would not decrease the total value. Therefore, greedy loading by density with fractional split on the last item is optional. 
+
+Greedy Knapsack 
+Based on supply table and W = 500kg:
+
+| Algorithm           | Weight Loaded (kg) | Help Score | Unused Capacity (kg) |
+| :------------------ | :----------------- | :--------- | :------------------- |
+| Fractional Knapsack | 500.00             | 810.00     | 0.00                 |
+| Greedy              | 499.00             | 808.00     | 1.00                 |
+
+Greedy loads 50 torch and battery (100kg), 20 formula units (100kg), 33 blankets (99kg), 
+10 water units (100kg) and 5 medical kits (100kg). There is a 1 kg balance and it is not enough for any supply items to be put. Fractional loading takes 33.33 blankets (99.99kg) and fully utilizes the truck and gains +2.00 help score. This indicates that both algorithms are executed side by side in the GUI.
 
 ## Core Features
 1) Map and Roads
