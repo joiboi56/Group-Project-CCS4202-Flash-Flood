@@ -3,33 +3,28 @@ package algorithm;
 import model.KnapsackLineItem;
 import model.KnapsackResult;
 import model.SupplyItem;
-
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-/**
- * Fractional Knapsack — decides what supplies to put on the rescue truck.
- *
- * Real-life idea: the truck can only carry 500 kg, but we have many items
- * (water, blankets, medical kits). We want to pack items that give the most
- * "help score" per kilogram. Items like rice or water CAN be split into
- * smaller portions, so we fill every last kg of space.
- */
+//Fractional Knapsack — decides what supplies to put on the rescue truck.
+ // The truck only can fit 500kg(customizable). Then, we have a load of items to be load in the truck
+//The Fractional knapsack will decide based on the "help score" per kilogram. Thus, it will give the best combination
+//and produced the highest help score .
 public class FractionalKnapsackOptimizer {
 
-    /**
-     * Picks the best mix of supplies for one trip.
-     *
-     * @param items      list of available relief items with weight, priority, stock
-     * @param capacityW  maximum truck weight in kg (W from our project report)
-     * @return           manifest showing what to load, total weight and help score
-     */
+    // Pick the best mix of items for one trip
+
+    //The parameter included are items(list of available relief items wit weight,priority and stock), capacityW(max truck weight in kg)
+    //return(showing what to load, total weight and help score
     public KnapsackResult optimize(List<SupplyItem> items, double capacityW) {
-        // Step 1: sort items by density (priority / weight) — highest first
+
+        // sorting the items first by following the (priority / weight) rule and choose the highest
         // e.g. torch has density 3.0, medical kit only 0.5, so torch goes first
         List<SupplyItem> sorted = new ArrayList<>(items);
+
+        // compare the density(priority/weight0
         sorted.sort((a, b) -> Double.compare(b.density(), a.density()));
 
         // Track how much stock is left for each item while we pack
@@ -38,10 +33,15 @@ public class FractionalKnapsackOptimizer {
             stockLeft.put(item.getId(), item.getAvailableKg());
         }
 
+        //shows the remaining capacity of the truck left
         double remainingCapacity = capacityW;
+        //to store the total priority score
         double totalScore = 0.0;
+
+        // list of the final selected items and their quantities
         List<KnapsackLineItem> manifest = new ArrayList<>();
 
+        //Go through all the sorted items by density
         for (SupplyItem item : sorted) {
             double maxFromStock = stockLeft.getOrDefault(item.getId(), 0.0);
             if (remainingCapacity <= 0 || maxFromStock <= 0) {
