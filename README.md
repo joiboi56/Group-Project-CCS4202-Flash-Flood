@@ -46,6 +46,7 @@ Managing flood risk information across multiple zones can be overwhelming. Flash
 Given the three algorithms in the form of pseudocode used in this project which are Dijkstra’s Algorithm to find the shortest path, the Fractional Knapsack Algorithm and the discrete Greedy Knapsack Algorithm that is used for loading supplies.
 **Dijkstra’s Algorithm (Shortest Route)**
 
+```text
 DIJKSTRA(graph, sourceId, dMax, truckWeightKg):
     for each node n in graph:
         dist[n] = ∞
@@ -76,10 +77,12 @@ DIJKSTRA(graph, sourceId, dMax, truckWeightKg):
         Store (ETA, path, reachable)
 
 return results
+```
 
 Comparison Case of Load Score Maximization
 **Fractional Knapsack Algorithm**
 
+```text
 FRACTIONAL_KNAPSACK(items, capacityW):
     sorted = items sorted by (priorityScore / weightPerUnit) descending
     remaining = capacityW
@@ -93,9 +96,13 @@ FRACTIONAL_KNAPSACK(items, capacityW):
         totalScore += scoreAdded
         remaining -= weightLoaded
 
-    return (manifest, capacityW - remaining, totalScore)
+  return (manifest, capacityW - remaining, totalScore)
+```
+
 
 **Discrete Greedy Knapsack Algorithm**
+
+```text
 GREEDY_KNAPSACK(items, capacityW):
     sorted = items sorted by density descending
     remaining = capacityW
@@ -109,6 +116,7 @@ GREEDY_KNAPSACK(items, capacityW):
         add loaded units to manifest
 
     return (manifest, capacityW - remaining, totalScore)
+```
 
 ## Algorithm Analysis
 Correctness design proof
@@ -119,6 +127,7 @@ For each step, the unvisited node with the tiny tentative distance is finalized 
 edge weights are positive and no next path through an unvisited node is able to improve a finalized distance. After filtering flooded edges more than equal 700 mm and disabled nodes more than equal Dmax, the returned path is the shortest among safe routes only that consistent with flood evacuation routing approaches in prior research.
 
 **Fractional Knapsack**
+
 Firstly, if an optimal solution did not take the highest density item, swapping a small 
 amount of lower density cargo for higher density cargo would not decrease the total value. Therefore, greedy loading by density with fractional split on the last item is optional. 
 
