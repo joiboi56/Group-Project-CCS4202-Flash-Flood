@@ -1,11 +1,8 @@
 package model;
 
-/**
- * One line on the truck loading list (cargo manifest).
- * Shows how much of one supply item was packed and how much help score it gives.
- */
-public class KnapsackLineItem {
 
+public class KnapsackLineItem {
+    //which supply item this line is about, e.g rice, water..
     private final SupplyItem item;
     private final double weightLoaded; // kg actually put on the truck
     private final double scoreAdded;   // help score from this line
@@ -17,20 +14,20 @@ public class KnapsackLineItem {
         this.scoreAdded = scoreAdded;
         this.fraction = fraction;
     }
-
+    //which item is this line about, e.g rice, water..
     public SupplyItem getItem() {
         return item;
     }
-
+    //item weight
     public double getWeightLoaded() {
         return weightLoaded;
     }
-
+    //add help score
     public double getScoreAdded() {
         return scoreAdded;
     }
 
-    /** How many whole units this represents (can be a decimal for fractional loading). */
+    // How many whole units this represents (can be a decimal for fractional loading).
     public double getFraction() {
         return fraction;
     }
