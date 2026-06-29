@@ -3,15 +3,15 @@ package model;
 import java.util.List;
 
 /**
- * Result of Dijkstra's algorithm for a single destination node:
- * its shortest ETA, path, and reachability status.
+ * Dijkstra result for one destination: how long it takes, which roads to use,
+ * and whether the place can be reached at all.
  */
 public class NodeRouteInfo {
 
     private final String nodeId;
-    private final double eta;          // dist[v]; Double.POSITIVE_INFINITY if unreachable
-    private final List<String> path;   // sequence of node ids, source -> ... -> nodeId
-    private final boolean reachable;   // false if DISABLED or no path exists
+    private final double eta;        // shortest travel time in minutes
+    private final List<String> path; // list of node IDs from hub to here
+    private final boolean reachable; // false if flooded or no path found
 
     public NodeRouteInfo(String nodeId, double eta, List<String> path, boolean reachable) {
         this.nodeId = nodeId;
@@ -36,7 +36,7 @@ public class NodeRouteInfo {
         return reachable;
     }
 
-    /** e.g. "UNI -> UPM -> SKS" rendered with the arrow character used in the UI. */
+    /** Builds a readable path string with arrow symbols for display. */
     public String getPathString() {
         return String.join(" \u2192 ", path);
     }

@@ -29,6 +29,11 @@ import java.awt.Color;
 import java.awt.FlowLayout;
 import java.awt.GridLayout;
 
+/**
+ * Tab 3 — Delivery Plan.
+ * Shows Dijkstra route results, knapsack loading comparison, and simple advice text.
+ * Three sub-tabs: Where to Send Help | What to Load on Truck | Simple Advice
+ */
 public class DeliveryPlanPanel extends JPanel {
 
     private final ReliefPlannerController controller;
@@ -48,13 +53,14 @@ public class DeliveryPlanPanel extends JPanel {
     private final JButton greedyBtn = new JButton("Greedy Algorithm");
 
     private DeliveryPlan currentPlan;
-    private boolean showGreedy;
+    private boolean showGreedy; // false = show fractional, true = show greedy
 
     public DeliveryPlanPanel(ReliefPlannerController controller) {
         this.controller = controller;
         setLayout(new BorderLayout(8, 8));
         setBorder(BorderFactory.createEmptyBorder(8, 8, 8, 8));
 
+        // Top summary area
         JPanel top = new JPanel(new BorderLayout(6, 6));
         top.add(summaryLabel, BorderLayout.NORTH);
 
@@ -72,6 +78,7 @@ public class DeliveryPlanPanel extends JPanel {
         top.add(barPanel, BorderLayout.SOUTH);
         add(top, BorderLayout.NORTH);
 
+        // Table of planned deliveries (hub -> destination)
         planRequestModel = new DefaultTableModel(new String[]{"Relief Hub", "Destination"}, 0) {
             @Override
             public boolean isCellEditable(int row, int column) {
@@ -80,6 +87,7 @@ public class DeliveryPlanPanel extends JPanel {
         };
         planRequestTable = new JTable(planRequestModel);
 
+        // Table of Dijkstra results after Calculate
         routeModel = new DefaultTableModel(
                 new String[]{"Relief Hub", "Destination", "Status", "Travel Time", "Suggested Route"}, 0) {
             @Override
@@ -90,6 +98,7 @@ public class DeliveryPlanPanel extends JPanel {
         JTable routeTable = new JTable(routeModel);
         routeTable.getColumn("Status").setCellRenderer(new StatusRenderer());
 
+        // Table of knapsack loading manifest
         loadModel = new DefaultTableModel(
                 new String[]{"Supply Item", "Loaded (kg)", "Help Score", "Fraction"}, 0) {
             @Override
@@ -123,6 +132,7 @@ public class DeliveryPlanPanel extends JPanel {
         refreshDeliveryRequestControls();
     }
 
+    /** Builds the route sub-tab with delivery setup and results tables. */
     private JPanel buildRoutePanel(JTable routeTable) {
         JPanel routePanel = new JPanel(new BorderLayout(6, 6));
         JPanel editor = new JPanel(new BorderLayout(6, 6));
@@ -156,6 +166,7 @@ public class DeliveryPlanPanel extends JPanel {
         return routePanel;
     }
 
+    /** Refills hub and destination dropdowns from the current graph. */
     public void refreshDeliveryRequestControls() {
         hubBox.removeAllItems();
         destinationBox.removeAllItems();
@@ -173,6 +184,7 @@ public class DeliveryPlanPanel extends JPanel {
         refreshDeliveryRequestTable();
     }
 
+    /** Updates the planned deliveries table from controller's request list. */
     private void refreshDeliveryRequestTable() {
         planRequestModel.setRowCount(0);
         Graph graph = controller.getGraph();
@@ -186,6 +198,7 @@ public class DeliveryPlanPanel extends JPanel {
         }
     }
 
+    /** Adds hub->destination from dropdowns to the delivery plan list. */
     private void addDeliveryRequest() {
         NodeChoice hub = (NodeChoice) hubBox.getSelectedItem();
         NodeChoice destination = (NodeChoice) destinationBox.getSelectedItem();
@@ -201,6 +214,7 @@ public class DeliveryPlanPanel extends JPanel {
         routeStats.setText(" ");
     }
 
+    /** Removes selected row from delivery plan list. */
     private void removeSelectedDeliveryRequest() {
         int row = planRequestTable.getSelectedRow();
         if (row < 0) {
@@ -215,6 +229,7 @@ public class DeliveryPlanPanel extends JPanel {
         routeStats.setText(" ");
     }
 
+    /** Restores the 6 default NADMA Sector 4 delivery routes. */
     private void resetSampleDeliveryRequests() {
         controller.resetDeliveryRequestsToSample();
         refreshDeliveryRequestControls();
@@ -224,6 +239,10 @@ public class DeliveryPlanPanel extends JPanel {
         routeStats.setText(" ");
     }
 
+    /**
+     * Displays a completed DeliveryPlan — called from MainFrame after Calculate.
+     * Fills route table, loading table, progress bar, and advice text.
+     */
     public void showPlan(DeliveryPlan plan) {
         if (plan == null) {
             return;
@@ -266,17 +285,20 @@ public class DeliveryPlanPanel extends JPanel {
         }
     }
 
+    /** Switches between fractional and greedy knapsack result views. */
     private void switchAlgorithm(boolean greedy) {
         showGreedy = greedy;
         updateAlgorithmButtons();
         refreshLoadView();
     }
 
+    /** Greys out the button for the algorithm currently being displayed. */
     private void updateAlgorithmButtons() {
         fractionalBtn.setEnabled(showGreedy);
         greedyBtn.setEnabled(!showGreedy);
     }
 
+    /** Updates loading table and truck progress bar for the active algorithm. */
     private void refreshLoadView() {
         if (currentPlan == null) {
             loadStats.setText(" ");
@@ -319,11 +341,13 @@ public class DeliveryPlanPanel extends JPanel {
         }
     }
 
+    /** Refreshes dropdowns and re-shows last plan (e.g. after map edit). */
     public void refresh() {
         refreshDeliveryRequestControls();
         showPlan(controller.getLastPlan());
     }
 
+    /** Wrapper for combo box — stores node ID but displays place name. */
     private static class NodeChoice {
         private final String id;
         private final String name;
@@ -339,6 +363,7 @@ public class DeliveryPlanPanel extends JPanel {
         }
     }
 
+    /** Colours route status green (Can Deliver) or red (Blocked). */
     private static class StatusRenderer extends DefaultTableCellRenderer {
         @Override
         public java.awt.Component getTableCellRendererComponent(JTable table, Object value,

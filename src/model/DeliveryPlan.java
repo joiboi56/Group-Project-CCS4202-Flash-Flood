@@ -3,11 +3,15 @@ package model;
 import java.util.ArrayList;
 import java.util.List;
 
+/**
+ * Holds the complete answer after pressing "Calculate Delivery Plan".
+ * Combines Dijkstra route results + both knapsack loading results.
+ */
 public class DeliveryPlan {
 
     private final List<DeliveryRoute> routes = new ArrayList<>();
-    private KnapsackResult knapsackResult;
-    private KnapsackResult greedyResult;
+    private KnapsackResult knapsackResult;   // fractional knapsack output
+    private KnapsackResult greedyResult;     // greedy knapsack output
     private int reachableDestinations;
     private int blockedDestinations;
     private double dMax;
@@ -17,6 +21,7 @@ public class DeliveryPlan {
         return routes;
     }
 
+    /** Adds one row to the route results table. */
     public void addRoute(DeliveryRoute route) {
         routes.add(route);
     }
@@ -69,6 +74,10 @@ public class DeliveryPlan {
         this.truckCapacity = truckCapacity;
     }
 
+    /**
+     * Plain-language summary for the "Simple Advice" tab.
+     * Written so non-IT users (dispatchers) can understand the plan quickly.
+     */
     public List<String> buildAdvice() {
         List<String> advice = new ArrayList<>();
         advice.add("Vehicle flood limit (Dmax): " + (int) dMax + " mm");
@@ -77,6 +86,7 @@ public class DeliveryPlan {
         if (blockedDestinations > 0) {
             advice.add(blockedDestinations + " routes are blocked — try the other relief hub or wait for water to drop.");
         }
+        // List fractional knapsack loading
         if (knapsackResult != null) {
             advice.add("Fractional knapsack: load " + String.format("%.1f", knapsackResult.getTotalWeight())
                     + " kg (help score " + String.format("%.1f", knapsackResult.getTotalScore()) + ").");
@@ -87,6 +97,7 @@ public class DeliveryPlan {
                 }
             }
         }
+        // List greedy knapsack loading for comparison
         if (greedyResult != null) {
             advice.add("Greedy (whole items): load " + String.format("%.1f", greedyResult.getTotalWeight())
                     + " kg (help score " + String.format("%.1f", greedyResult.getTotalScore()) + ").");

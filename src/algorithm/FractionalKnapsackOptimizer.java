@@ -10,14 +10,29 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * Module 02: Fractional knapsack for emergency payload loading.
+ * Fractional Knapsack — decides what supplies to put on the rescue truck.
+ *
+ * Real-life idea: the truck can only carry 500 kg, but we have many items
+ * (water, blankets, medical kits). We want to pack items that give the most
+ * "help score" per kilogram. Items like rice or water CAN be split into
+ * smaller portions, so we fill every last kg of space.
  */
 public class FractionalKnapsackOptimizer {
 
+    /**
+     * Picks the best mix of supplies for one trip.
+     *
+     * @param items      list of available relief items with weight, priority, stock
+     * @param capacityW  maximum truck weight in kg (W from our project report)
+     * @return           manifest showing what to load, total weight and help score
+     */
     public KnapsackResult optimize(List<SupplyItem> items, double capacityW) {
+        // Step 1: sort items by density (priority / weight) — highest first
+        // e.g. torch has density 3.0, medical kit only 0.5, so torch goes first
         List<SupplyItem> sorted = new ArrayList<>(items);
         sorted.sort((a, b) -> Double.compare(b.density(), a.density()));
 
+        // Track how much stock is left for each item while we pack
         Map<String, Double> stockLeft = new HashMap<>();
         for (SupplyItem item : items) {
             stockLeft.put(item.getId(), item.getAvailableKg());
@@ -40,7 +55,9 @@ public class FractionalKnapsackOptimizer {
                 continue;
             }
 
+            // Load as much as we can — either until truck is full or stock runs out
             double weightLoaded = Math.min(remainingCapacity, maxFromStock);
+            // Fractional part: we can take half a bag of rice if only half fits
             double fraction = weightLoaded / unitWeight;
             double scoreAdded = fraction * item.getPriorityScore();
 

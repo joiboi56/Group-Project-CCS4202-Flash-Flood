@@ -1,17 +1,17 @@
 package model;
 
 /**
- * Vertex in the road network graph.
- * d(n) = flood depth in mm; node is impassable when d(n) >= Dmax.
+ * One location on the flood map (a vertex in graph G).
+ * Can be a relief hub or an affected area. Stores flood depth d(n) in mm.
  */
 public class Node {
 
-    private final String id;
-    private String name;
-    private PlaceType placeType;
-    private double floodDepthMm;
-    private double layoutX;
-    private double layoutY;
+    private final String id;           // short code, e.g. "UPM", "SKSS"
+    private String name;               // full name shown in tables
+    private PlaceType placeType;       // hub or affected area
+    private double floodDepthMm;       // d(n) — water depth at this place
+    private double layoutX;            // horizontal position on map (0.0 to 1.0)
+    private double layoutY;            // vertical position on map (0.0 to 1.0)
 
     public Node(String id, String name, PlaceType placeType, double floodDepthMm) {
         this.id = id;
@@ -64,14 +64,20 @@ public class Node {
         this.layoutY = layoutY;
     }
 
+    /** True if this place is a relief base (UPM / UNITEN) where trucks start. */
     public boolean isHub() {
         return placeType == PlaceType.RELIEF_HUB;
     }
 
+    /**
+     * Checks if flood water is too high for the rescue vehicle to enter.
+     * From our report: if d(n) >= Dmax, the node is blocked.
+     */
     public boolean isDisabled(double dMax) {
         return floodDepthMm >= dMax;
     }
 
+    /** Short text drawn inside the circle on the map. */
     public String shortLabel() {
         if (id.length() <= 4) {
             return id;

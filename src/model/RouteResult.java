@@ -3,16 +3,14 @@ package model;
 import java.util.Map;
 
 /**
- * Output of a single run of Dijkstra's algorithm: the shortest, safe
- * route from a single source node to every other node in the graph,
- * matching the OUTPUT step of the Dijkstra flowchart
- * ("Shortest safe route, V'=[...] ").
+ * Everything Dijkstra found when starting from one hub.
+ * Contains route info for every place on the map, not just one destination.
  */
 public class RouteResult {
 
-    private final String source;
-    private final double dMax;
-    private final Map<String, NodeRouteInfo> results; // nodeId -> info
+    private final String source;  // hub ID where routing started
+    private final double dMax;  // flood limit used during this run
+    private final Map<String, NodeRouteInfo> results; // destination ID -> route info
 
     public RouteResult(String source, double dMax, Map<String, NodeRouteInfo> results) {
         this.source = source;
@@ -32,6 +30,7 @@ public class RouteResult {
         return results;
     }
 
+    /** Shortcut to get route info for one specific place. */
     public NodeRouteInfo get(String nodeId) {
         return results.get(nodeId);
     }

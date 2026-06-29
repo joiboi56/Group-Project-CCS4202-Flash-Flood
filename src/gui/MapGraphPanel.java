@@ -20,17 +20,22 @@ import java.awt.event.MouseEvent;
 import java.awt.geom.Point2D;
 import java.util.function.Supplier;
 
+/**
+ * The interactive map canvas — draws circles (places) and lines (roads).
+ * Dotted lines = flooded/blocked roads (matches our project proposal sketch).
+ * Users can drag places and click to add roads.
+ */
 public class MapGraphPanel extends JPanel {
 
-    private static final int NODE_R = 22;
+    private static final int NODE_R = 22; // radius of each place circle
     private static final double BLOCKED_FLOOD_DEPTH_MM = 700.0;
 
-    private Supplier<Graph> graphSupplier;
-    private String selectedId;
-    private String roadStartId;
-    private boolean addRoadMode;
+    private Supplier<Graph> graphSupplier; // gives us the current graph from controller
+    private String selectedId;             // which place is clicked
+    private String roadStartId;            // first click when adding a road
+    private boolean addRoadMode;           // true when user clicked "Add Road"
 
-    private Node dragNode;
+    private Node dragNode;    // place being dragged with mouse
     private int dragOffsetX;
     private int dragOffsetY;
 
@@ -38,6 +43,7 @@ public class MapGraphPanel extends JPanel {
     private Runnable graphChangeListener;
     private RoadAddedListener roadAddedListener;
 
+    /** Sets up mouse listeners for click, drag, and road drawing. */
     public MapGraphPanel() {
         setBackground(new Color(30, 34, 42));
         setPreferredSize(new Dimension(700, 420));
@@ -54,7 +60,7 @@ public class MapGraphPanel extends JPanel {
                 if (dragNode != null) {
                     dragNode = null;
                     if (graphChangeListener != null) {
-                        graphChangeListener.run();
+                        graphChangeListener.run(); // save position after drag
                     }
                 }
             }
@@ -75,6 +81,7 @@ public class MapGraphPanel extends JPanel {
         this.graphSupplier = graphSupplier;
     }
 
+    /** Called when user clicks a place — updates the editor fields below map. */
     public void setSelectionListener(NodeSelectionListener listener) {
         this.selectionListener = listener;
     }
@@ -83,6 +90,7 @@ public class MapGraphPanel extends JPanel {
         this.graphChangeListener = listener;
     }
 
+    /** Called when user finishes drawing a road (second click). */
     public void setOnRoadAdded(RoadAddedListener listener) {
         this.roadAddedListener = listener;
     }
@@ -96,16 +104,19 @@ public class MapGraphPanel extends JPanel {
         repaint();
     }
 
+    /** Turns on crosshair cursor — user clicks two places to connect them. */
     public void startAddRoadMode() {
         addRoadMode = true;
         roadStartId = null;
         setCursor(Cursor.getPredefinedCursor(Cursor.CROSSHAIR_CURSOR));
     }
 
+    /** Redraw the map (e.g. after data changes). */
     public void refresh() {
         repaint();
     }
 
+    /** Centres a newly added place on the map. */
     public void placeNewNode(String id) {
         Graph graph = graphSupplier.get();
         Node node = graph.getNode(id);
@@ -118,6 +129,10 @@ public class MapGraphPanel extends JPanel {
         notifySelection();
     }
 
+    /**
+     * "Re-arrange Map" button — spreads all places in a circle so the map looks tidy.
+     * Only changes screen positions, not routes or flood data.
+     */
     public void rearrangeCircular() {
         Graph graph = graphSupplier.get();
         int count = graph.getAllNodes().size();
@@ -134,6 +149,7 @@ public class MapGraphPanel extends JPanel {
         repaint();
     }
 
+    /** Handles mouse click — either select/drag a node or add-road second step. */
     private void handlePress(MouseEvent e) {
         Graph graph = graphSupplier.get();
         Node hit = findNodeAt(graph, e.getX(), e.getY());
@@ -142,10 +158,10 @@ public class MapGraphPanel extends JPanel {
                 return;
             }
             if (roadStartId == null) {
-                roadStartId = hit.getId();
+                roadStartId = hit.getId(); // first click — remember start
             } else if (!roadStartId.equals(hit.getId())) {
                 if (roadAddedListener != null) {
-                    roadAddedListener.onRoadAdded(roadStartId, hit.getId());
+                    roadAddedListener.onRoadAdded(roadStartId, hit.getId()); // second click — create road
                 }
                 addRoadMode = false;
                 roadStartId = null;
@@ -169,6 +185,7 @@ public class MapGraphPanel extends JPanel {
         }
     }
 
+    /** Tells MapRoadsPanel which place was selected so editor fields update. */
     private void notifySelection() {
         if (selectionListener == null) {
             return;
@@ -177,6 +194,7 @@ public class MapGraphPanel extends JPanel {
         selectionListener.onNodeSelected(selectedId != null ? graph.getNode(selectedId) : null);
     }
 
+    /** Updates layoutX/layoutY while user drags a place on the map. */
     private void moveNode(Node node, int mouseX, int mouseY) {
         int w = getWidth();
         int h = getHeight();
@@ -189,10 +207,12 @@ public class MapGraphPanel extends JPanel {
         node.setLayoutY(clamp(y));
     }
 
+    /** Keeps nodes inside the map area (not off the edge). */
     private double clamp(double v) {
         return Math.max(0.05, Math.min(0.95, v));
     }
 
+    /** Returns which place (if any) is under the mouse coordinates. */
     private Node findNodeAt(Graph graph, int x, int y) {
         for (Node n : graph.getAllNodes()) {
             Point2D p = toScreen(n);
@@ -205,6 +225,7 @@ public class MapGraphPanel extends JPanel {
         return null;
     }
 
+    /** Converts stored layout position (0-1) to pixel coordinates on screen. */
     private Point2D toScreen(Node n) {
         int w = Math.max(getWidth(), 1);
         int h = Math.max(getHeight(), 1);
@@ -213,6 +234,10 @@ public class MapGraphPanel extends JPanel {
         return new Point2D.Double(x, y);
     }
 
+    /**
+     * Main drawing method — paints roads then places on top.
+     * Travel time and flood depth labels are drawn on each road.
+     */
     @Override
     protected void paintComponent(Graphics g) {
         super.paintComponent(g);
@@ -224,6 +249,7 @@ public class MapGraphPanel extends JPanel {
 
         Graph graph = graphSupplier.get();
 
+        // --- Draw all roads ---
         for (Edge edge : graph.getEdges()) {
             Node from = graph.getNode(edge.getFrom());
             Node to = graph.getNode(edge.getTo());
@@ -232,6 +258,7 @@ public class MapGraphPanel extends JPanel {
             }
             Point2D p1 = toScreen(from);
             Point2D p2 = toScreen(to);
+            // Flooded or >= 700mm -> dashed grey line (blocked)
             if (edge.isFlooded() || edge.getFloodDepthMm() >= BLOCKED_FLOOD_DEPTH_MM) {
                 g2.setColor(new Color(120, 120, 120));
                 g2.setStroke(new BasicStroke(1.5f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND,
@@ -242,6 +269,7 @@ public class MapGraphPanel extends JPanel {
             }
             g2.drawLine((int) p1.getX(), (int) p1.getY(), (int) p2.getX(), (int) p2.getY());
 
+            // Show travel time and flood depth on the road
             int mx = (int) ((p1.getX() + p2.getX()) / 2);
             int my = (int) ((p1.getY() + p2.getY()) / 2);
             g2.setFont(new Font("SansSerif", Font.PLAIN, 11));
@@ -253,6 +281,7 @@ public class MapGraphPanel extends JPanel {
             }
         }
 
+        // --- Draw all places as coloured circles ---
         for (Node node : graph.getAllNodes()) {
             Point2D p = toScreen(node);
             int cx = (int) p.getX();
@@ -283,6 +312,7 @@ public class MapGraphPanel extends JPanel {
         g2.dispose();
     }
 
+    /** Circle colour based on flood depth — redder = more dangerous. */
     private Color nodeFillColor(Node node) {
         if (node.getPlaceType() == PlaceType.RELIEF_HUB) {
             return new Color(45, 110, 70);
@@ -303,6 +333,7 @@ public class MapGraphPanel extends JPanel {
         return new Color(55, 120, 185);
     }
 
+    /** Border colour around each place circle. */
     private Color outlineColor(Node node) {
         double d = node.getFloodDepthMm();
         if (d >= 400) {
@@ -314,10 +345,12 @@ public class MapGraphPanel extends JPanel {
         return new Color(70, 140, 210);
     }
 
+    /** Callback when user clicks a place — used by MapRoadsPanel. */
     public interface NodeSelectionListener {
         void onNodeSelected(Node node);
     }
 
+    /** Callback when user finishes drawing a road between two places. */
     public interface RoadAddedListener {
         void onRoadAdded(String fromId, String toId);
     }

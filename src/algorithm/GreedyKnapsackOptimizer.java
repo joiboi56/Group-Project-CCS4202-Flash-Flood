@@ -9,9 +9,21 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-
+/**
+ * Greedy (discrete) Knapsack — same goal as fractional, but items must stay whole.
+ *
+ * Use case: sealed medical kits or boxes that cannot be opened and split during
+ * transport. We still pick high-priority items first, but only whole units fit.
+ * Result may leave empty space on the truck — we compare both methods in the GUI.
+ */
 public class GreedyKnapsackOptimizer {
 
+    /**
+     * Packs the truck using whole units only (no splitting).
+     *
+     * @param items      relief items from the supplies list
+     * @param capacityW  truck weight limit in kg
+     */
     public KnapsackResult optimize(List<SupplyItem> items, double capacityW) {
         List<SupplyItem> sorted = new ArrayList<>(items);
         sorted.sort((a, b) -> Double.compare(b.density(), a.density()));
@@ -38,6 +50,8 @@ public class GreedyKnapsackOptimizer {
             double scoreAdded = 0.0;
             double stock = maxFromStock;
 
+            // Keep adding whole units while there is room and stock left
+            // e.g. each medical kit is 20 kg — if only 12 kg left, we skip it entirely
             while (unitWeight > 0 && unitWeight <= remainingCapacity && stock >= unitWeight) {
                 weightLoaded += unitWeight;
                 scoreAdded += item.getPriorityScore();

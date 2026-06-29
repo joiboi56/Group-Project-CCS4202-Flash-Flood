@@ -16,6 +16,11 @@ import javax.swing.table.DefaultTableModel;
 import java.awt.BorderLayout;
 import java.awt.FlowLayout;
 
+/**
+ * Tab 2 — Supplies panel.
+ * User edits relief items (weight, priority, stock) and truck capacity W.
+ * These values are passed to the knapsack algorithms when Calculate runs.
+ */
 public class SuppliesPanel extends JPanel {
 
     private final ReliefPlannerController controller;
@@ -31,11 +36,12 @@ public class SuppliesPanel extends JPanel {
 
         add(new JLabel("List the relief items available and how much stock you have."), BorderLayout.NORTH);
 
+        // Table columns match SupplyItem fields used in knapsack
         tableModel = new DefaultTableModel(
                 new String[]{"Supply Item", "Weight per unit (kg)", "Priority Score", "Available (kg)"}, 0) {
             @Override
             public boolean isCellEditable(int row, int column) {
-                return column > 0;
+                return column > 0; // name column not editable in table (use Add Item)
             }
         };
         JTable table = new JTable(tableModel);
@@ -63,6 +69,7 @@ public class SuppliesPanel extends JPanel {
         reloadTable();
     }
 
+    /** Fills the table from the database supply list. */
     private void reloadTable() {
         tableModel.setRowCount(0);
         for (SupplyItem item : controller.getSupplyItems()) {
@@ -75,6 +82,7 @@ public class SuppliesPanel extends JPanel {
         }
     }
 
+    /** Prompts user for a new supply item and adds it to the database. */
     private void addItem() {
         String name = JOptionPane.showInputDialog(this, "Item name:");
         if (name == null || name.isBlank()) {
@@ -92,6 +100,7 @@ public class SuppliesPanel extends JPanel {
         }
     }
 
+    /** Deletes the highlighted row from the supply list. */
     private void removeItem(JTable table) {
         int row = table.getSelectedRow();
         if (row < 0) {
@@ -102,6 +111,10 @@ public class SuppliesPanel extends JPanel {
         reloadTable();
     }
 
+    /**
+     * Copies table values into SupplyItem objects before Calculate runs.
+     * Also updates truck capacity — this becomes W in the knapsack problem.
+     */
     public void applyEdits() {
         FloodDatabase db = controller.getDatabase();
         for (int i = 0; i < tableModel.getRowCount() && i < db.getSupplyItems().size(); i++) {
@@ -121,6 +134,7 @@ public class SuppliesPanel extends JPanel {
         controller.save();
     }
 
+    /** Optional shortcut — apply edits then calculate (not used by main button). */
     public void calculatePlan() {
         applyEdits();
         controller.calculateDeliveryPlan();

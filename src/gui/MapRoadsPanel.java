@@ -23,6 +23,11 @@ import java.awt.Dimension;
 import java.awt.FlowLayout;
 import java.awt.GridLayout;
 
+/**
+ * Tab 1 — Map & Roads.
+ * Combines the visual map (MapGraphPanel) with toolbar buttons and a roads table.
+ * Edits here change the graph that Dijkstra uses for route calculation.
+ */
 public class MapRoadsPanel extends JPanel {
 
     private static final double BLOCKED_FLOOD_DEPTH_MM = 700.0;
@@ -52,6 +57,7 @@ public class MapRoadsPanel extends JPanel {
         mapArea.add(graphPanel, BorderLayout.CENTER);
         mapArea.add(buildEditor(), BorderLayout.SOUTH);
 
+        // Roads table — user can edit travel time, weight limit, flooded checkbox
         roadModel = new DefaultTableModel(
                 new String[]{"From Place", "To Place", "Time (min)", "Limit (kg)", "Flooded?"}, 0) {
             @Override
@@ -96,6 +102,7 @@ public class MapRoadsPanel extends JPanel {
         SwingUtilities.invokeLater(() -> split.setDividerLocation(0.72));
     }
 
+    /** Top button bar: Add Place, Delete, Add Road, Re-arrange, Load Sample. */
     private JPanel buildToolbar() {
         JPanel bar = new JPanel(new FlowLayout(FlowLayout.LEFT, 6, 4));
         JButton addPlace = new JButton("Add Place");
@@ -129,6 +136,7 @@ public class MapRoadsPanel extends JPanel {
         return bar;
     }
 
+    /** Form below map to edit name, flood level, and type of selected place. */
     private JPanel buildEditor() {
         JPanel panel = new JPanel(new GridLayout(2, 1));
         panel.setBorder(BorderFactory.createTitledBorder("Place editor"));
@@ -148,6 +156,7 @@ public class MapRoadsPanel extends JPanel {
         return panel;
     }
 
+    /** When user draws a road on map, ask for travel time and weight limit. */
     private void wireGraphPanel() {
         graphPanel.setOnRoadAdded((from, to) -> {
             String minutes = JOptionPane.showInputDialog(this, "Travel time (minutes):", "10");
@@ -170,6 +179,7 @@ public class MapRoadsPanel extends JPanel {
         });
     }
 
+    /** Dialog to create a new affected area on the map. */
     private void addPlace() {
         String name = JOptionPane.showInputDialog(this, "Place name:");
         if (name == null || name.isBlank()) {
@@ -195,6 +205,7 @@ public class MapRoadsPanel extends JPanel {
         }
     }
 
+    /** Removes the selected place and all roads connected to it. */
     private void deleteSelected() {
         String id = graphPanel.getSelectedNodeId();
         if (id == null) {
@@ -214,6 +225,7 @@ public class MapRoadsPanel extends JPanel {
         onPlanReady.run();
     }
 
+    /** Fills editor fields when user clicks a place on the map. */
     private void showSelectedNode(Node node) {
         if (node == null) {
             clearEditor();
@@ -224,6 +236,7 @@ public class MapRoadsPanel extends JPanel {
         typeBox.setSelectedItem(node.getPlaceType());
     }
 
+    /** Saves edits from the place editor into the selected node. */
     private void saveSelectedPlace() {
         String id = graphPanel.getSelectedNodeId();
         if (id == null) {
@@ -244,12 +257,14 @@ public class MapRoadsPanel extends JPanel {
         }
     }
 
+    /** Clears the place editor when nothing is selected. */
     private void clearEditor() {
         nameField.setText("");
         floodField.setText("");
         typeBox.setSelectedIndex(0);
     }
 
+    /** Rebuilds the roads table from the current graph. */
     public void refreshRoadTable() {
         roadModel.setRowCount(0);
         Graph graph = controller.getGraph();
@@ -266,6 +281,7 @@ public class MapRoadsPanel extends JPanel {
         }
     }
 
+    /** Deletes the road row highlighted in the table. */
     private void removeSelectedRoad() {
         int row = roadTable.getSelectedRow();
         if (row < 0) {
@@ -293,6 +309,10 @@ public class MapRoadsPanel extends JPanel {
         }
     }
 
+    /**
+     * Called before Calculate — copies road table edits into Edge objects.
+     * So if user ticks "Flooded?" in the table, Dijkstra will skip that road.
+     */
     public void applyRoadTableEdits() {
         Graph graph = controller.getGraph();
         for (int i = 0; i < roadModel.getRowCount(); i++) {

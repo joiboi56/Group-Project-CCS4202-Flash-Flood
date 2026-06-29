@@ -1,16 +1,15 @@
 package model;
 
 /**
- * One row of the cargo manifest produced by the Fractional Knapsack
- * Algorithm: how much of a given supply item was loaded, the survival
- * score it contributed, and what fraction (x_i) of the item was used.
+ * One line on the truck loading list (cargo manifest).
+ * Shows how much of one supply item was packed and how much help score it gives.
  */
 public class KnapsackLineItem {
 
     private final SupplyItem item;
-    private final double weightLoaded; // kg actually placed on the vehicle
-    private final double scoreAdded;   // contribution to total survival score
-    private final double fraction;     // x_i in [0,1]; 1.0 = whole item loaded
+    private final double weightLoaded; // kg actually put on the truck
+    private final double scoreAdded;   // help score from this line
+    private final double fraction;     // 1.0 = full unit, 0.5 = half (fractional knapsack)
 
     public KnapsackLineItem(SupplyItem item, double weightLoaded, double scoreAdded, double fraction) {
         this.item = item;
@@ -31,6 +30,7 @@ public class KnapsackLineItem {
         return scoreAdded;
     }
 
+    /** How many whole units this represents (can be a decimal for fractional loading). */
     public double getFraction() {
         return fraction;
     }

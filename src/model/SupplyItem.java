@@ -1,16 +1,16 @@
 package model;
 
 /**
- * Relief supply item for the fractional knapsack module.
- * weightPerUnit = w(i), priorityScore = v(i), availableKg = stock on hand.
+ * One relief supply item used by the knapsack algorithms.
+ * weightPerUnit = w(i), priorityScore = v(i), availableKg = warehouse stock.
  */
 public class SupplyItem {
 
     private final String id;
     private String name;
-    private double weightPerUnit;
-    private double priorityScore;
-    private double availableKg;
+    private double weightPerUnit;  // kg per one unit (e.g. one medical kit = 20 kg)
+    private double priorityScore;  // how important this item is in an emergency
+    private double availableKg;    // how much stock we have in the warehouse
 
     public SupplyItem(String id, String name, double weightPerUnit, double priorityScore, double availableKg) {
         this.id = id;
@@ -56,6 +56,10 @@ public class SupplyItem {
         this.availableKg = availableKg;
     }
 
+    /**
+     * Value-to-weight ratio v(i)/w(i). Both knapsack algorithms sort by this.
+     * Higher density = pack first (e.g. torch = 3.0, rice = 0.47).
+     */
     public double density() {
         return weightPerUnit <= 0 ? 0 : priorityScore / weightPerUnit;
     }
