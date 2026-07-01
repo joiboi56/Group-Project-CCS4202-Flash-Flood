@@ -142,6 +142,19 @@ Based on supply table and W = 500kg:
 Greedy loads 50 torch and battery (100kg), 20 formula units (100kg), 33 blankets (99kg), 
 10 water units (100kg) and 5 medical kits (100kg). There is a 1 kg balance and it is not enough for any supply items to be put. Fractional loading takes 33.33 blankets (99.99kg) and fully utilizes the truck and gains +2.00 help score. This indicates that both algorithms are executed side by side in the GUI.
 
+
+**Algorithm Design Complexity**
+
+| Algorithm           | Best Case    | Average Case   | Worst Case     | Remarks                                   |
+| :------------------ | :----------- | :------------- | :------------- | :---------------------------------------- |
+| Dijkstra            | O(E+V log V) | O((V+E) log V) | O((V+E) log V) | V=8, E=19, instant for regional network |
+| Fractional Knapsack | O(n log n)   | O(n log n)     | O(n log n)     | Dominated by sorting 6 items              |
+| Greedy              | O(n log n)   | O(n log n)     | O(n log n)     | Same time and                             |
+| Knapsack            |              |                |                | may score lower                           |
+
+Observation: By having V=8, E=19 and n=6, every algorithm can complete in under 1ms on a standard laptop. It is also suitable for real-time dispatcher use. Furthermore, GUI recalculation is effectively instantaneous when the Calculate Delivery Plan is clicked.
+
+
 ## Core Features
 1) Map and Roads
 ![Flash Flood Relief Banner](image/UI(1).png)
@@ -238,7 +251,7 @@ Group-Project-CCS4202-Flash-Flood/
 
 **Option 1 — Run in IntelliJ IDEA**
 1. Clone or donwload this repository:
-   git clone https://github.com/<your-username>/Group-Project-CCS4202-Flash-Flood.git
+   git clone [https://github.com/<your-username>/Group-Project-CCS4202-Flash-Flood.git](https://github.com/joiboi56/Group-Project-CCS4202-Flash-Flood.git)
 2. Open the project in IntelliJ IDEA:
 File → Open → select the project folder
 3. Set the SDK if prompted:
